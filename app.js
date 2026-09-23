@@ -5,7 +5,7 @@
 import { sounds } from './sounds.js';
 import { t, getLang, toggleLanguage, applyTranslations } from './i18n.js';
 
-// تحديد رابط الـ Worker تلقائياً أو استخدام الرابط المحلي/المرفوع
+// تحديد رابط الـ Worker تلقائياً بناءً على النطاق الحقيقي
 const WORKER_URL = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
   ? 'http://localhost:8787'
   : window.location.origin;
@@ -130,7 +130,7 @@ function handleTap(x, y) {
   updateUI();
 
   // تشغيل الصوت والاهتزاز
-  sounds.tap();
+  sounds?.tap?.();
 
   const tg = window.Telegram?.WebApp;
   if (tg?.HapticFeedback) {
@@ -142,7 +142,7 @@ function handleTap(x, y) {
 
 function createFloatingNumber(x, y) {
   const num = document.createElement('div');
-  num.className = 'floating-num';
+  num.className = 'floating-num font-black text-amber-400 absolute text-2xl pointer-events-none select-none z-50 animate-bounce';
   num.textContent = `+${pointsPerClick}`;
   num.style.left = `${x - 15}px`;
   num.style.top = `${y - 30}px`;
@@ -180,16 +180,16 @@ window.buyUpgrade = function(type) {
   if (type === 'tap' && score >= 100) {
     score -= 100;
     pointsPerClick += 1;
-    sounds.upgrade();
-    showAlert('🎉', t('paySuccess'), t('tapUpgradeTitle'));
+    sounds?.upgrade?.();
+    showAlert('🎉', t('paySuccess') || 'نجاح', t('tapUpgradeTitle') || 'تمت ترقية قوة النقر!');
   } else if (type === 'energy' && score >= 200) {
     score -= 200;
     maxEnergy += 500;
     energy += 500;
-    sounds.upgrade();
-    showAlert('🎉', t('paySuccess'), t('energyUpgradeTitle'));
+    sounds?.upgrade?.();
+    showAlert('🎉', t('paySuccess') || 'نجاح', t('energyUpgradeTitle') || 'تم زيادة حد الطاقة!');
   } else {
-    sounds.error();
+    sounds?.error?.();
     showAlert('⚠️', 'تنبيه', 'عذراً، لا تمتلك رصيد كافي من الـ Booms!');
   }
   updateUI();
@@ -210,7 +210,7 @@ function showApp() {
 
 function renderUser() {
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-  const name = tgUser?.first_name || userData?.user?.firstName || t('guest');
+  const name = tgUser?.first_name || userData?.user?.firstName || t('guest') || 'لاعب pwhy';
   
   const userNameEl = document.getElementById('user-name');
   if (userNameEl) userNameEl.textContent = name;
@@ -226,7 +226,7 @@ function renderProducts() {
   if (!container) return;
 
   if (!products.length) {
-    container.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">${t('loading')}</div>`;
+    container.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">${t('loading') || 'جاري تحميل المنتجات...'}</div>`;
     return;
   }
 
@@ -244,11 +244,11 @@ function renderProducts() {
           <div>
             <h4 class="font-bold text-sm text-slate-100">${titleText}</h4>
             <p class="text-xs text-slate-400">${desc}</p>
-            <span class="text-xs text-yellow-400 font-semibold mt-1 block">${t('priceLabel')}: ${p.price} ⭐</span>
+            <span class="text-xs text-yellow-400 font-semibold mt-1 block">${t('priceLabel') || 'السعر'}: ${p.price} ⭐</span>
           </div>
         </div>
         <button onclick="buyProduct('${p.id}')" class="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs hover:brightness-110 active:scale-95 transition">
-          ${t('navShop')} ⭐
+          ${t('navShop') || 'شراء'} ⭐
         </button>
       </div>
     `;
@@ -263,7 +263,7 @@ function renderHistory() {
   const purchases = userData?.data?.purchases || [];
   if (!purchases.length) {
     section.classList.remove('hidden');
-    list.innerHTML = `<div class="text-slate-500 text-center py-3 text-xs">${t('noPurchases')}</div>`;
+    list.innerHTML = `<div class="text-slate-500 text-center py-3 text-xs">${t('noPurchases') || 'لا توجد مشتريات سابقة'}</div>`;
     return;
   }
 
@@ -294,13 +294,16 @@ window.buyProduct = async function(productId) {
   const initData = tg?.initData;
 
   if (!tg || !tg.openInvoice || !initData) {
-    sounds.error();
-    showAlert('⚠️', 'تنبيه', t('payNotTg'));
+    sounds?.error?.();
+    showAlert('⚠️', 'تنبيه', t('payNotTg') || 'يرجى فتح اللعبة من داخل تطبيق تليجرام الرسمي للشراء');
     return;
   }
 
   const payModal = document.getElementById('pay-modal');
-  if (payModal) payModal.classList.add('active');
+  if (payModal) {
+    payModal.classList.remove('hidden');
+    payModal.classList.add('flex');
+  }
 
   try {
     const res = await fetch(`${WORKER_URL}/api/create-invoice`, {
@@ -310,20 +313,23 @@ window.buyProduct = async function(productId) {
     });
     const data = await res.json();
 
-    if (payModal) payModal.classList.remove('active');
+    if (payModal) {
+      payModal.classList.add('hidden');
+      payModal.classList.remove('flex');
+    }
 
     if (!data.url) {
-      sounds.error();
-      showAlert('❌', 'خطأ', data.error || t('payError'));
+      sounds?.error?.();
+      showAlert('❌', 'خطأ', data.error || t('payError') || 'فشل في إنشاء فاتورة الشراء');
       return;
     }
 
     // فتح نافذة دفع النجوم عبر تليجرام الرسمي
     tg.openInvoice(data.url, (status) => {
       if (status === 'paid') {
-        sounds.claim();
+        sounds?.claim?.();
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
-        showAlert('🎉', 'نجاح', t('paySuccess'));
+        showAlert('🎉', 'نجاح', t('paySuccess') || 'تمت عملية الشراء بنجاح!');
         
         // تطبيق المكافأة فوراً
         score += 10000;
@@ -331,20 +337,23 @@ window.buyProduct = async function(productId) {
 
         setTimeout(() => location.reload(), 2000);
       } else if (status === 'failed') {
-        sounds.error();
-        showAlert('⚠️', 'إلغاء', t('payFail'));
+        sounds?.error?.();
+        showAlert('⚠️', 'إلغاء', t('payFail') || 'تم إلغاء عملية الشراء');
       }
     });
   } catch (e) {
-    if (payModal) payModal.classList.remove('active');
-    sounds.error();
-    showAlert('⚠️', 'خطأ', t('payNetErr'));
+    if (payModal) {
+      payModal.classList.add('hidden');
+      payModal.classList.remove('flex');
+    }
+    sounds?.error?.();
+    showAlert('⚠️', 'خطأ', t('payNetErr') || 'حدث خطأ في الاتصال بالشبكة');
   }
 };
 
 // ==================== NAVIGATION SWITCHER ====================
 window.switchTab = function(tab) {
-  sounds.nav();
+  sounds?.nav?.();
   const tabGame = document.getElementById('tab-game');
   const tabShop = document.getElementById('tab-shop');
   const navGame = document.getElementById('nav-game');
@@ -383,13 +392,18 @@ function showAlert(icon, title, message) {
   if (msgEl) msgEl.textContent = message;
   
   if (modal) {
-    modal.classList.add('active');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
   } else {
     alert(`${icon} ${title}: ${message}`);
   }
 }
 
 window.closeAlert = function() {
-  sounds.nav();
-  document.getElementById('alert-modal')?.classList.remove('active');
+  sounds?.nav?.();
+  const modal = document.getElementById('alert-modal');
+  if (modal) {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
 };
