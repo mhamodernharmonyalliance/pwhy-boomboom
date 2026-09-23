@@ -1,68 +1,100 @@
 /* ==========================================
-   المنتجات — باقات الترقية والموارد
+   Products Catalog - PWhy BoomBoom
    ========================================== */
 
-import { CONFIG } from './config.js';
+export const PRODUCTS = {
+  // --- Boom Packs (حزم النقاط) ---
+  'booms_small': {
+    price: 15,
+    type: 'credits',
+    amount: 10000,
+    title: {
+      en: '💣 10,000 Booms',
+      ar: '💣 10,000 نقطة بوم'
+    },
+    desc: {
+      en: 'Get a quick boost of 10k Booms',
+      ar: 'احصل على دفعة سريعة من 10 آلاف نقطة'
+    }
+  },
+  'booms_medium': {
+    price: 50,
+    type: 'credits',
+    amount: 50000,
+    title: {
+      en: '🚀 50,000 Booms',
+      ar: '🚀 50,000 نقطة بوم'
+    },
+    desc: {
+      en: 'Save 20% — Boost your rank faster',
+      ar: 'وفر 20% — واترتقِ في الترتيب بسرعة'
+    }
+  },
+  'booms_large': {
+    price: 150,
+    type: 'credits',
+    amount: 200000,
+    title: {
+      en: '💎 200,000 Booms',
+      ar: '💎 200,000 نقطة بوم'
+    },
+    desc: {
+      en: 'Best Value! Massive points pack',
+      ar: 'القيمة الأفضل! حزمة ضخمة من النقاط'
+    }
+  },
 
-// 6 مستويات كحد أقصى — متدرجة احترافيًا
-export const LEVELS = {
-  1: { price: 50,  maxEnergy: 10, coinMultiplier: 1.0,
-       title: { ar: '🌱 البداية',           en: '🌱 The Beginning' },
-       desc:  { ar: 'وعد منذ 1919',         en: 'A promise since 1919' } },
+  // --- Subscriptions & Status (الاشتراكات والتميز) ---
+  'vip_pass': {
+    price: 100,
+    type: 'subscription',
+    durationDays: 30,
+    title: {
+      en: '👑 VIP Pass (30 Days)',
+      ar: '👑 اشتراك VIP (30 يوم)'
+    },
+    desc: {
+      en: '2x Tap Multiplier & Unlimited Energy Regen',
+      ar: 'مضاعفة النقرات 2x واسترجاع غير محدود للطاقة'
+    }
+  },
 
-  2: { price: 100, maxEnergy: 15, coinMultiplier: 1.5,
-       title: { ar: '📈 الاستمرار',          en: '📈 The Continuation' },
-       desc:  { ar: 'المرحلة الثانية',       en: 'Phase Two' } },
-
-  3: { price: 125, maxEnergy: 20, coinMultiplier: 2.0,
-       title: { ar: '🚀 ليس الأخير',         en: '🚀 Not the Last' },
-       desc:  { ar: 'ما زال قريبًا',         en: 'Still coming soon' } },
-
-  4: { price: 150, maxEnergy: 25, coinMultiplier: 2.5,
-       title: { ar: '🌐 المرحلة القادمة',    en: '🌐 The Next Phase' },
-       desc:  { ar: 'بلا تاريخ محدد',        en: 'No specific date' } },
-
-  5: { price: 175, maxEnergy: 30, coinMultiplier: 3.0,
-       title: { ar: '🏛️ الشبكة الرئيسية',    en: '🏛️ The Mainnet' },
-       desc:  { ar: 'التوثيق العالمي',       en: 'Global verification' } },
-
-  6: { price: 200, maxEnergy: 40, coinMultiplier: 4.0,
-       title: { ar: '👑 314 قريب',           en: '👑 314 Soon' },
-       desc:  { ar: 'أقرب من أي وقت مضى',    en: 'Closer than ever' } },
+  // --- Boosters & Upgrades (التطويرات الممتازة) ---
+  'auto_bot': {
+    price: 75,
+    type: 'unlock',
+    featureId: 'autotap_bot',
+    title: {
+      en: '🤖 Auto-Tap Bot',
+      ar: '🤖 بوت النقر التلقائي'
+    },
+    desc: {
+      en: 'Collects Booms automatically while you are away',
+      ar: 'يجمع النقاط تلقائياً أثناء غيابك عن اللعبة'
+    }
+  },
+  'badge_legend': {
+    price: 25,
+    type: 'cosmetic',
+    title: {
+      en: '🎖️ Boom Legend Badge',
+      ar: '🎖️ شارة أسطورة البوم'
+    },
+    desc: {
+      en: 'Display a golden legendary badge next to your name',
+      ar: 'اعرض شارة ذهبية أسطورية بجانب اسمك'
+    }
+  }
 };
 
-// موارد البقاء النفسي
-export const RESOURCES = {
-  anesthesia: {
-    id: 'anesthesia', icon: '💊',
-    energyCost: CONFIG.costs.anesthesia,
-    title: { ar: 'بنج',    en: 'Anesthesia' },
-    desc:  { ar: 'يخفف صدمة الأخبار', en: 'Mutes the shock of news' },
-  },
-  patience: {
-    id: 'patience', icon: '🧘',
-    energyCost: CONFIG.costs.patience,
-    title: { ar: 'صبر',    en: 'Patience' },
-    desc:  { ar: 'تسريع خفيف',      en: 'Slight speedup' },
-  },
-  conspiracy: {
-    id: 'conspiracy', icon: '🕵️',
-    energyCost: CONFIG.costs.conspiracy,
-    title: { ar: 'نظرية مؤامرة', en: 'Conspiracy Theory' },
-    desc:  { ar: 'يسرّع الاستلام',   en: 'Accelerates claim' },
-  },
-};
-
+// Helper: Convert to list for API
 export function getProductsList() {
-  return Object.entries(LEVELS).map(([lvl, data]) => ({
-    id: `level_${lvl}`,
-    level: Number(lvl),
-    price: data.price,
-    type: 'level_upgrade',
-    title: data.title,
-    desc: data.desc,
+  return Object.entries(PRODUCTS).map(([id, p]) => ({
+    id,
+    price: p.price,
+    type: p.type,
+    amount: p.amount || null,
+    title: p.title,
+    desc: p.desc
   }));
 }
-
-export function getLevel(level) { return LEVELS[level] || null; }
-export function getResource(id) { return RESOURCES[id] || null; }
