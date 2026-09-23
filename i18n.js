@@ -3,7 +3,7 @@
    نظام دعم اللغة العربية والإنجليزية
    ========================================== */
 
-const I18N = {
+const I18N_DATA = {
   en: {
     loading: "Loading...",
     purchaseHistory: "Purchase History",
@@ -66,7 +66,7 @@ const I18N = {
   }
 };
 
-// تحديد اللغة الحالية بناءً على localStorage أو لغة تليجرام الافتراضية
+// تحديد اللغة الافتراضية
 let currentLang = localStorage.getItem('lang') || 
   (window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code === 'ar' ? 'ar' : 'en');
 
@@ -74,8 +74,8 @@ let currentLang = localStorage.getItem('lang') ||
  * دالة جلب النص المترجم بناءً على المفتاح
  */
 export function t(key) {
-  const dict = I18N[currentLang] || I18N.en;
-  return dict[key] || I18N.en[key] || key;
+  const dict = I18N_DATA[currentLang] || I18N_DATA.en;
+  return dict[key] || I18N_DATA.en[key] || key;
 }
 
 /**
@@ -83,30 +83,6 @@ export function t(key) {
  */
 export function getLang() { 
   return currentLang; 
-}
-
-/**
- * تغيير اللغة وتطبيقها على الصفحة
- */
-export function setLanguage(lang) {
-  if (!I18N[lang]) lang = 'en';
-  currentLang = lang;
-  localStorage.setItem('lang', lang);
-  
-  document.documentElement.lang = lang;
-  document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
-  
-  applyTranslations();
-
-  // إطلاق حدث تغيير اللغة للتطبيقات الأخرى إذا لزم الأمر
-  window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang } }));
-}
-
-/**
- * التبديل بين العربية والإنجليزية
- */
-export function toggleLanguage() {
-  setLanguage(currentLang === 'en' ? 'ar' : 'en');
 }
 
 /**
@@ -119,10 +95,40 @@ export function applyTranslations() {
       el.textContent = t(key);
     }
   });
+
+  // تحديث نص زر التغيير تلقائياً إن وجد
+  const langBtn = document.getElementById('lang-btn');
+  if (langBtn) {
+    langBtn.textContent = t('langBtn');
+  }
 }
 
-// تهيئة اللغة عند بداية التحميل
+/**
+ * تغيير اللغة وتطبيقها على الصفحة
+ */
+export function setLanguage(lang) {
+  if (!I18N_DATA[lang]) lang = 'en';
+  currentLang = lang;
+  localStorage.setItem('lang', lang);
+  
+  document.documentElement.lang = lang;
+  document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
+  
+  applyTranslations();
+  window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang } }));
+}
+
+/**
+ * التبديل بين العربية والإنجليزية
+ */
+export function toggleLanguage() {
+  setLanguage(currentLang === 'en' ? 'ar' : 'en');
+}
+
+// جعل الدوال متاحة على مستوى window لسهولة الوصول المباشر
 if (typeof window !== 'undefined') {
+  window.I18N = { t, getLang, setLanguage, toggleLanguage, applyTranslations };
+  
   document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.lang = currentLang;
     document.documentElement.dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
