@@ -1,22 +1,37 @@
 /* ==========================================
-   P Why — Boom Boom
-   Frontend Logic
+   PWhy BoomBoom - Combined Game & Stars JS
    ========================================== */
 
-import { CONFIG } from './config.js';
-import { getProductsList, LEVELS, RESOURCES, getLevel } from './products.js';
-import { state, applyLevel, addCoins, addLog, setMood } from './game/state.js';
-import { checkDailyPresence, doClick, doClaim, consumeEnergy } from './game/ledger.js';
-import { getFace, setFaceMood } from './game/faces.js';
-import { t, getLang, setLanguage, toggleLanguage } from './i18n.js';
-import { sounds } from './sounds.js';
-
-window.toggleLanguage = toggleLanguage;
-window.switchTab = switchTab;
-window.closeFlash = closeFlash;
-
+let userData = null;
 let products = [];
-let currentTab = 'game';
+
+// Game State Variables
+let score = parseInt(localStorage.getItem('boomboom_score')) || 0;
+let energy = parseInt(localStorage.getItem('boomboom_energy')) || 1000;
+let maxEnergy = parseInt(localStorage.getItem('boomboom_max_energy')) || 1000;
+let pointsPerClick = parseInt(localStorage.getItem('boomboom_ppc')) || 1;
+
+// ==================== LANGUAGE HELPER ====================
+function getLang() {
+  const tgLang = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
+  return tgLang === 'ar' ? 'ar' : 'en';
+}
+
+function t(key) {
+  const lang = getLang();
+  const dict = {
+    guest: { ar: 'لاعب pwhy', en: 'pwhy Player' },
+    loading: { ar: 'جاري تحميل المنتجات...', en: 'Loading products...' },
+    priceLabel: { ar: '⭐ نجمة', en: '⭐ Stars' },
+    noPurchases: { ar: 'لا توجد مشتريات سابقة', en: 'No purchase history' },
+    payNotTg: { ar: 'يجب فتح اللعبة داخل تطبيق تليجرام للشراء!', en: 'Open in Telegram to buy!' },
+    payError: { ar: 'فشل في إنشاء فاتورة الشراء', en: 'Failed to create invoice' },
+    paySuccess: { ar: 'تمت عملية الشراء بنجاح! 🎉', en: 'Purchase successful! 🎉' },
+    payFail: { ar: 'تم إلغاء أو فشل عملية الشراء', en: 'Payment canceled or failed' },
+    payNetErr: { ar: 'حدث خطأ في الاتصال بالشبكة', en: 'Network error occurred' }
+  };
+  return dict[key]?.[lang] || dict[key]?.en || key;
+}
 
 // ==================== INIT ====================
 (async function init() {
@@ -24,51 +39,57 @@ let currentTab = 'game';
   if (tg) {
     tg.ready();
     tg.expand();
-    if (tg.themeParams?.bg_color) document.body.style.background = tg.themeParams.bg_color;
+    if (tg.themeParams?.bg_color) {
+      document.body.style.background = tg.themeParams.bg_color;
+    }
   }
 
+  // Setup Click Events & Intervals
+  setupGameEvents();
+
+  // Load backend data
   try {
     await loadUser();
     await loadProducts();
     hideSplash();
     showApp();
-    bindUI();
-    renderAll();
-    checkDailyPresence();
-    if (state.lastDaily && Date.now() - state.lastDaily < 1000) {
-      sounds.daily();
-    }
-    loop();
+    renderUser();
+    renderProducts();
+    renderHistory();
   } catch (e) {
-    console.error(e);
+    console.error('Init error:', e);
     hideSplash();
-    flash(e.message || 'Failed to load');
+    showApp(); // Show app even in guest/fallback mode
+    renderUser();
   }
-
-  window.__onLangChange = renderAll;
 })();
 
 // ==================== API ====================
 async function loadUser() {
   const initData = window.Telegram?.WebApp?.initData;
   if (!initData) {
-    state.user = { firstName: t('guest'), id: 0 };
+    // Guest mode / Fallback
+    userData = {
+      user: { firstName: t('guest') },
+      data: { credits: score, purchases: [] }
+    };
     return;
   }
+
   const res = await fetch('/api/me', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ initData }),
+    body: JSON.stringify({ initData })
   });
   const result = await res.json();
   if (!result.ok) throw new Error(result.error || 'Auth failed');
-  state.user = result.user;
-  const data = result.data || {};
-  if (data.level) applyLevel(data.level);
-  if (typeof data.energy === 'number') state.energy = data.energy;
-  if (typeof data.coins === 'number') state.coins = data.coins;
-  if (data.lastDaily) state.lastDaily = data.lastDaily;
-  if (data.purchases) state.purchases = data.purchases;
+  userData = result;
+
+  // Sync server credits to score if available
+  if (userData.data?.credits !== undefined) {
+    score = userData.data.credits;
+    updateUI();
+  }
 }
 
 async function loadProducts() {
@@ -77,272 +98,281 @@ async function loadProducts() {
   products = data.products || [];
 }
 
-// ==================== UI ====================
+// ==================== GAME LOGIC ====================
+function setupGameEvents() {
+  const clickArea = document.getElementById('click-area');
+  if (!clickArea) return;
+
+  clickArea.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.touches.length; i++) {
+      handleTap(e.touches[i].clientX, e.touches[i].clientY);
+    }
+  });
+
+  clickArea.addEventListener('click', (e) => {
+    if (e.pointerType === 'mouse') {
+      handleTap(e.clientX, e.clientY);
+    }
+  });
+
+  // Energy Regenerator
+  setInterval(() => {
+    if (energy < maxEnergy) {
+      energy = Math.min(maxEnergy, energy + 2);
+      updateUI();
+    }
+  }, 1000);
+
+  updateUI();
+}
+
+function handleTap(x, y) {
+  if (energy < pointsPerClick) return;
+
+  score += pointsPerClick;
+  energy -= pointsPerClick;
+  updateUI();
+
+  const tg = window.Telegram?.WebApp;
+  if (tg?.HapticFeedback) {
+    tg.HapticFeedback.impactOccurred('medium');
+  }
+
+  createFloatingNumber(x, y);
+}
+
+function createFloatingNumber(x, y) {
+  const num = document.createElement('div');
+  num.className = 'floating-num';
+  num.textContent = `+${pointsPerClick}`;
+  num.style.left = `${x - 15}px`;
+  num.style.top = `${y - 30}px`;
+  document.body.appendChild(num);
+
+  setTimeout(() => num.remove(), 800);
+}
+
+function updateUI() {
+  const scoreEl = document.getElementById('score');
+  const scoreHeaderEl = document.getElementById('score-header');
+  const energyEl = document.getElementById('energy');
+  const maxEnergyEl = document.getElementById('max-energy');
+  const energyBarEl = document.getElementById('energy-bar');
+
+  if (scoreEl) scoreEl.textContent = score.toLocaleString();
+  if (scoreHeaderEl) scoreHeaderEl.textContent = score.toLocaleString();
+  if (energyEl) energyEl.textContent = energy;
+  if (maxEnergyEl) maxEnergyEl.textContent = maxEnergy;
+
+  if (energyBarEl) {
+    const energyPercent = (energy / maxEnergy) * 100;
+    energyBarEl.style.width = `${energyPercent}%`;
+  }
+
+  // Local Storage Sync
+  localStorage.setItem('boomboom_score', score);
+  localStorage.setItem('boomboom_energy', energy);
+  localStorage.setItem('boomboom_max_energy', maxEnergy);
+  localStorage.setItem('boomboom_ppc', pointsPerClick);
+}
+
+// In-Game Upgrades with Score Points
+window.buyUpgrade = function(type) {
+  if (type === 'tap' && score >= 100) {
+    score -= 100;
+    pointsPerClick += 1;
+    showAlert('🎉', 'نجاح', 'تمت ترقية قوة النقر بنجاح!');
+  } else if (type === 'energy' && score >= 200) {
+    score -= 200;
+    maxEnergy += 500;
+    energy += 500;
+    showAlert('🎉', 'نجاح', 'تمت ترقية حد الطاقة بنجاح!');
+  } else {
+    showAlert('⚠️', 'تنبيه', 'عذراً، لا تمتلك رصيد كافي من الـ Booms!');
+  }
+  updateUI();
+};
+
+// ==================== UI RENDER ====================
 function hideSplash() {
   const s = document.getElementById('splash');
-  if (s) { s.classList.add('hidden'); setTimeout(() => s.remove(), 400); }
+  if (s) s.classList.add('hidden');
+  setTimeout(() => s?.remove(), 500);
 }
+
 function showApp() {
   document.getElementById('app')?.classList.remove('hidden');
 }
 
-function bindUI() {
-  // Tap button
-  const tap = document.getElementById('click-area');
-  if (tap) {
-    tap.addEventListener('touchstart', (e) => {
-      e.preventDefault();
-      for (let i = 0; i < e.touches.length; i++) {
-        handleTap(e.touches[i].clientX, e.touches[i].clientY);
-      }
-    }, { passive: false });
-
-    tap.addEventListener('click', (e) => {
-      if (e.pointerType === 'mouse') handleTap(e.clientX, e.clientY);
-    });
-  }
-
-  // Sound toggle
-  document.getElementById('sound-btn')?.addEventListener('click', (e) => {
-    const on = sounds.toggle();
-    e.currentTarget.textContent = on ? '🔊' : '🔇';
-  });
-}
-
-// ==================== TAP ====================
-function handleTap(x, y) {
-  if (!doClick()) return;
-  sounds.tap();
-  spawnFloating(x, y, `+${CONFIG.game.clickEnergy}`);
-  renderStats();
-  renderFace();
-  window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');
-}
-
-function spawnFloating(x, y, text) {
-  const el = document.createElement('div');
-  el.className = 'floating-num';
-  el.textContent = text;
-  el.style.left = (x - 15) + 'px';
-  el.style.top  = (y - 30) + 'px';
-  document.body.appendChild(el);
-  setTimeout(() => el.remove(), 900);
-}
-
-// ==================== ACTIONS ====================
-window.doClaimAction = function () {
-  const res = doClaim();
-  if (res.ok) {
-    sounds.claim();
-    flash(`💰 +${res.earned}`);
-    renderAll();
-    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred('success');
-  }
-};
-
-function useResource(id) {
-  const r = RESOURCES[id];
-  if (!r) return;
-  if (!consumeEnergy(r.energyCost)) {
-    sounds.error();
-    flash(t('notEnoughEnergy'));
-    return;
-  }
-  if (id === 'anesthesia') { setFaceMood('sedated', 5000);  sounds.sedate();   addLog(t('anesthesiaUsed')); }
-  if (id === 'patience')   { setFaceMood('calm', 3000);      sounds.resource(); addLog(t('patienceUsed')); }
-  if (id === 'conspiracy') { setFaceMood('suspicious', 4000); sounds.resource(); addLog(t('conspiracyUsed')); }
-  renderAll();
-}
-
-window.useResource = useResource;
-
-// ==================== UPGRADE ====================
-window.upgradeLevel = async function () {
-  const next = getLevel(state.level + 1);
-  if (!next) return;
-  const tg = window.Telegram?.WebApp;
-  const initData = tg?.initData;
-  if (!tg || !tg.openInvoice || !initData) {
-    sounds.error();
-    flash(t('payNotTg'));
-    return;
-  }
-  try {
-    const res = await fetch('/api/create-invoice', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId: `level_${state.level + 1}`, initData, lang: getLang() }),
-    });
-    const data = await res.json();
-    if (!data.url) { sounds.error(); flash(data.error || t('payError')); return; }
-    tg.openInvoice(data.url, (status) => {
-      if (status === 'paid') {
-        applyLevel(state.level + 1);
-        addLog(`📦 ${t('level')} ${state.level}`);
-        sounds.upgrade();
-        renderAll();
-        flash(t('paySuccess'));
-      } else if (status === 'failed') {
-        sounds.error();
-        flash(t('payFail'));
-      }
-    });
-  } catch { sounds.error(); flash(t('payNetErr')); }
-};
-
-// ==================== ADS ====================
-async function watchAd() {
-  if (!CONFIG.ads.enabled) { sounds.error(); flash(t('adsDisabled')); return; }
-  const now = Date.now();
-  if (now - state.lastAd < CONFIG.ads.cooldown) { sounds.error(); flash(t('adsDisabled')); return; }
-  const ok = await showRewardedAd();
-  if (ok) {
-    state.lastAd = now;
-    addCoins(CONFIG.ads.rewardCoins);
-    addLog(`📺 +${CONFIG.ads.rewardCoins} 🪙`);
-    sounds.adReward();
-    renderAll();
-  }
-}
-
-async function showRewardedAd() {
-  // TODO: Monetag SDK
-  return true;
-}
-
-// ==================== TABS ====================
-function switchTab(tab) {
-  currentTab = tab;
-  sounds.nav();
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(`tab-${tab}`)?.classList.add('active');
-  document.getElementById('nav-game')?.classList.toggle('active', tab === 'game');
-  document.getElementById('nav-shop')?.classList.toggle('active', tab === 'shop');
-}
-
-// ==================== RENDER ====================
-function renderAll() {
-  renderUser();
-  renderFace();
-  renderStats();
-  renderDreamBar();
-  renderLevels();
-  renderResources();
-  renderAdsButton();
-  renderLog();
-}
-
 function renderUser() {
-  const name = state.user?.firstName || t('guest');
-  document.getElementById('user-name').textContent = name;
-  document.getElementById('level-num').textContent = state.level;
-  if (state.user?.firstName) {
-    document.getElementById('user-avatar').textContent = state.user.firstName[0].toUpperCase();
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  const name = tgUser?.first_name || userData?.user?.firstName || t('guest');
+  
+  const userNameEl = document.getElementById('user-name');
+  if (userNameEl) userNameEl.textContent = name;
+
+  const userAvatarEl = document.getElementById('user-avatar');
+  if (userAvatarEl && name) {
+    userAvatarEl.textContent = name[0].toUpperCase();
   }
 }
 
-function renderFace() {
-  const face = getFace();
-  const el = document.getElementById('player-emoji');
-  if (el) el.textContent = face.emoji;
-  document.documentElement.style.setProperty('--led-color', face.color);
-}
-
-function renderStats() {
-  const e = Math.floor(state.energy);
-  document.getElementById('energy-value').textContent = e;
-  document.getElementById('energy-max').textContent = state.maxEnergy;
-  document.getElementById('coins-main').textContent = Math.floor(state.coins).toLocaleString();
-  document.getElementById('coins-header').textContent = Math.floor(state.coins).toLocaleString();
-  const pct = Math.min(100, (state.energy / state.maxEnergy) * 100);
-  document.getElementById('energy-fill').style.width = pct + '%';
-}
-
-function renderDreamBar() {
-  const progress = Math.min(99.5, (state.level / CONFIG.game.maxLevel) * 88 + Math.random() * 3);
-  document.getElementById('dream-fill').style.width = progress + '%';
-  document.getElementById('dream-real').textContent = `$${CONFIG.game.realPrice}`;
-}
-
-function renderLevels() {
-  const container = document.getElementById('levels-list');
+function renderProducts() {
+  const container = document.getElementById('products-container');
   if (!container) return;
-  const lang = getLang();
-  container.innerHTML = Object.entries(LEVELS).map(([lvl, data]) => {
-    const n = Number(lvl);
-    const owned = n <= state.level;
-    const isNext = n === state.level + 1;
-    const locked = n > state.level + 1;
-    const cls = owned ? 'owned' : (locked ? 'locked' : '');
+
+  if (!products.length) {
+    container.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">${t('loading')}</div>`;
+    return;
+  }
+
+  container.innerHTML = products.map(p => {
+    const lang = getLang();
+    const title = p.title?.[lang] || p.title?.en || p.id;
+    const desc = p.desc?.[lang] || p.desc?.en || '';
+    const icon = extractIcon(title) || '⭐';
+    const titleText = stripIcon(title);
+
     return `
-      <div class="level-card ${cls}">
-        <div class="level-left">
-          <div class="level-title">${data.title[lang] || data.title.ar}</div>
-          <div class="level-desc">${data.desc[lang] || data.desc.ar}</div>
-          <div class="level-price">⭐ ${data.price}</div>
+      <div class="bg-slate-900 p-4 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent flex items-center justify-between mb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-xl bg-yellow-500/20 text-yellow-400 flex items-center justify-center text-2xl">${icon}</div>
+          <div>
+            <h4 class="font-bold text-sm">${titleText}</h4>
+            <p class="text-xs text-slate-400">${desc}</p>
+            <span class="text-xs text-yellow-400 font-semibold mt-1 block">السعر: ${p.price} ${t('priceLabel')}</span>
+          </div>
         </div>
-        ${owned
-          ? `<span class="level-owned-badge">✅</span>`
-          : `<button class="level-buy" ${isNext ? '' : 'disabled'} onclick="upgradeLevel()">
-              ${isNext ? t('upgrade') : `🔒 ${t('level')} ${n - 1}`}
-             </button>`}
+        <button onclick="buyProduct('${p.id}')" class="bg-yellow-400 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs hover:bg-yellow-300 active:scale-95 transition">
+          شراء ⭐
+        </button>
       </div>
     `;
   }).join('');
 }
 
-function renderResources() {
-  const container = document.getElementById('resources-list');
-  if (!container) return;
-  const lang = getLang();
-  container.innerHTML = Object.values(RESOURCES).map(r => `
-    <div class="resource-card" onclick="useResource('${r.id}')">
-      <div class="res-icon">${r.icon}</div>
-      <div class="res-body">
-        <div class="res-name">${r.title[lang] || r.title.ar}</div>
-        <div class="res-desc">${r.desc[lang] || r.desc.ar}</div>
+function renderHistory() {
+  const section = document.getElementById('history-section');
+  const list = document.getElementById('history-list');
+  if (!section || !list) return;
+
+  const purchases = userData?.data?.purchases || [];
+  if (!purchases.length) {
+    section.classList.remove('hidden');
+    list.innerHTML = `<div class="text-slate-500 text-center py-3 text-xs">${t('noPurchases')}</div>`;
+    return;
+  }
+
+  section.classList.remove('hidden');
+  list.innerHTML = purchases.slice().reverse().map(p => {
+    const date = new Date(p.at).toLocaleDateString();
+    return `
+      <div class="flex justify-between items-center py-2 border-b border-slate-800 text-xs text-slate-300">
+        <span>${p.productId}</span>
+        <span class="opacity-60">${date}</span>
       </div>
-      <div class="res-cost">${r.energyCost} ⚡</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
-function renderAdsButton() {
-  const btn = document.getElementById('ad-btn');
-  if (!btn) return;
-  if (!CONFIG.ads.enabled) { btn.style.display = 'none'; return; }
-  btn.style.display = 'block';
-  btn.innerHTML = `📺 ${t('watchAd', { n: CONFIG.ads.rewardCoins })}`;
-  btn.onclick = watchAd;
+function extractIcon(title) {
+  const match = title?.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u);
+  return match ? match[0] : null;
 }
 
-function renderLog() {
-  const el = document.getElementById('log');
-  if (!el) return;
-  el.innerHTML = state.log.slice(0, 6).map(l =>
-    `<div class="log-item">${l.text}</div>`
-  ).join('');
+function stripIcon(title) {
+  return title ? title.replace(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u, '').trim() : '';
 }
 
-// ==================== LOOP ====================
-function loop() {
-  setInterval(() => {
-    renderFace();
-    renderStats();
-    renderDreamBar();
-  }, CONFIG.game.tickInterval);
+// ==================== BUY WITH TELEGRAM STARS ====================
+async function buyProduct(productId) {
+  const tg = window.Telegram?.WebApp;
+  const initData = tg?.initData;
+
+  if (!tg || !tg.openInvoice || !initData) {
+    showAlert('⚠️', 'تنبيه', t('payNotTg'));
+    return;
+  }
+
+  const payModal = document.getElementById('pay-modal');
+  if (payModal) payModal.classList.add('active');
+
+  try {
+    const res = await fetch('/api/create-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productId, initData, lang: getLang() })
+    });
+    const data = await res.json();
+
+    if (payModal) payModal.classList.remove('active');
+
+    if (!data.url) {
+      showAlert('❌', 'خطأ', data.error || t('payError'));
+      return;
+    }
+
+    // Open Official Telegram Stars Payment Invoice
+    tg.openInvoice(data.url, (status) => {
+      if (status === 'paid') {
+        if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
+        showAlert('🎉', 'نجاح', t('paySuccess'));
+        
+        // Bonus reward on client side immediately (or wait for reload)
+        score += 5000;
+        updateUI();
+
+        setTimeout(() => location.reload(), 2000);
+      } else if (status === 'failed') {
+        showAlert('⚠️', 'إلغاء', t('payFail'));
+      }
+    });
+  } catch (e) {
+    if (payModal) payModal.classList.remove('active');
+    showAlert('⚠️', 'خطأ', t('payNetErr'));
+  }
 }
 
-// ==================== HELPERS ====================
-function flash(text) {
-  const el = document.getElementById('flash');
-  if (!el) return;
-  el.textContent = text;
-  el.classList.add('active');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('active'), 2200);
+// ==================== NAVIGATION SWITCHER ====================
+window.switchTab = function(tab) {
+  const tabGame = document.getElementById('tab-game');
+  const tabShop = document.getElementById('tab-shop');
+  const navGame = document.getElementById('nav-game');
+  const navShop = document.getElementById('nav-shop');
+
+  if (tabGame) tabGame.classList.add('hidden');
+  if (tabShop) tabShop.classList.add('hidden');
+  if (navGame) navGame.className = 'flex flex-col items-center gap-1 text-slate-500';
+  if (navShop) navShop.className = 'flex flex-col items-center gap-1 text-slate-500';
+
+  if (tab === 'game') {
+    if (tabGame) tabGame.classList.remove('hidden');
+    if (navGame) navGame.className = 'flex flex-col items-center gap-1 text-amber-400';
+  } else {
+    if (tabShop) tabShop.classList.remove('hidden');
+    if (navShop) navShop.className = 'flex flex-col items-center gap-1 text-amber-400';
+  }
+};
+
+// ==================== ALERTS ====================
+function showAlert(icon, title, message) {
+  const iconEl = document.getElementById('alert-icon');
+  const titleEl = document.getElementById('alert-title');
+  const msgEl = document.getElementById('alert-message');
+  const modal = document.getElementById('alert-modal');
+
+  if (iconEl) iconEl.textContent = icon;
+  if (titleEl) titleEl.textContent = title;
+  if (msgEl) msgEl.textContent = message;
+  
+  if (modal) {
+    modal.classList.add('active');
+  } else {
+    alert(`${icon} ${title}: ${message}`);
+  }
 }
 
-function closeFlash() {
-  document.getElementById('flash')?.classList.remove('active');
+function closeAlert() {
+  document.getElementById('alert-modal')?.classList.remove('active');
 }
