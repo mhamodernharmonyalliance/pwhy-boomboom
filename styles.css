@@ -1,0 +1,317 @@
+/* ==========================================
+   Boom Boom — P Why
+   ========================================== */
+
+:root {
+  --led-color: #38bdf8;
+  --bg: #030712;
+  --card-bg: rgba(15, 23, 42, 0.75);
+  --border: rgba(56, 189, 248, 0.35);
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --gold: #fbbf24;
+  --red: #f87171;
+  --blue: #38bdf8;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-user-select: none; user-select: none;
+    font-family: -apple-system, 'Segoe UI', Roboto, 'Cairo', sans-serif; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding: 12px;
+}
+
+/* ============ Splash ============ */
+.splash {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #030712; color: var(--blue);
+  transition: opacity .4s;
+}
+.splash.hidden { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 42px; height: 42px;
+  border: 3px solid rgba(56,189,248,.2);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 14px;
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* ============ App ============ */
+.app {
+  max-width: 480px; margin: 0 auto;
+  animation: fadeIn .35s ease;
+}
+.app.hidden { display: none; }
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+
+/* ============ Header ============ */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px; margin-bottom: 10px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  backdrop-filter: blur(12px);
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark { font-size: 26px; filter: drop-shadow(0 0 8px var(--gold)); }
+.brand-name { font-weight: 700; font-size: 15px; letter-spacing: .5px; }
+.brand-tag { font-size: 11px; color: var(--muted); }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(56,189,248,.12);
+  border: 1px solid var(--border);
+  color: var(--blue); font-size: 15px; cursor: pointer;
+}
+
+/* ============ Dream Bar 314 ============ */
+.dream-bar {
+  padding: 8px 14px; margin-bottom: 10px;
+  background: linear-gradient(90deg, rgba(251,191,36,.06), rgba(251,191,36,.14));
+  border: 1px solid rgba(251,191,36,.4);
+  border-radius: 12px;
+}
+.dream-labels {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; margin-bottom: 6px;
+}
+.dream-real { color: var(--red); font-family: monospace; }
+.dream-soon { color: var(--muted); font-style: italic; }
+.dream-target { color: var(--gold); font-weight: 700; font-size: 13px; }
+.dream-track {
+  height: 6px; background: rgba(255,255,255,.06);
+  border-radius: 6px; overflow: hidden;
+}
+.dream-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--blue), var(--gold));
+  box-shadow: 0 0 12px var(--gold);
+  transition: width .8s ease;
+}
+
+/* ============ Player Card (LED mosaic) ============ */
+.player-card {
+  position: relative;
+  padding: 18px 16px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(56,189,248,.14), transparent 60%),
+    radial-gradient(circle at 50% 100%, rgba(139,92,246,.12), transparent 60%),
+    var(--card-bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow:
+    0 0 40px rgba(56,189,248,.15),
+    inset 0 0 60px rgba(56,189,248,.06);
+  animation: cardPulse 5s ease-in-out infinite;
+}
+@keyframes cardPulse {
+  0%,100% { box-shadow: 0 0 40px rgba(56,189,248,.15), inset 0 0 60px rgba(56,189,248,.06); }
+  50%     { box-shadow: 0 0 60px rgba(56,189,248,.30), inset 0 0 80px rgba(56,189,248,.10); }
+}
+
+.chart-bg {
+  position: absolute; inset: 0;
+  z-index: 0; opacity: .55;
+  pointer-events: none;
+}
+
+.card-inner {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 14px;
+}
+
+/* LED mosaic avatar */
+.avatar-wrap {
+  position: relative;
+  width: 96px; height: 96px;
+  flex-shrink: 0;
+}
+.led-mosaic {
+  position: absolute; inset: -6px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 20% 25%, var(--led-color), transparent 40%),
+    radial-gradient(circle at 80% 25%, var(--led-color), transparent 40%),
+    radial-gradient(circle at 20% 75%, var(--led-color), transparent 40%),
+    radial-gradient(circle at 80% 75%, var(--led-color), transparent 40%),
+    radial-gradient(circle at 50% 50%, var(--led-color), transparent 55%);
+  filter: blur(10px);
+  opacity: .8;
+  animation: ledSpin 6s linear infinite;
+}
+@keyframes ledSpin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.avatar {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 52px;
+  background: rgba(15,23,42,.85);
+  border: 2px solid var(--led-color);
+  border-radius: 50%;
+  box-shadow: 0 0 24px var(--led-color), inset 0 0 20px rgba(0,0,0,.5);
+  transition: all .3s ease;
+}
+
+.player-info { flex: 1; min-width: 0; }
+.user-name { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.vitals {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--muted); margin-bottom: 4px;
+}
+.vital-icon { color: var(--red); }
+.vital-pulse {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--red);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity: .4; transform: scale(.8); }
+  50%     { opacity: 1; transform: scale(1.3); }
+}
+.level-display {
+  display: inline-block;
+  padding: 3px 10px; font-size: 11px; font-weight: 600;
+  background: rgba(251,191,36,.12);
+  border: 1px solid rgba(251,191,36,.5);
+  border-radius: 20px; color: var(--gold);
+}
+
+/* ============ Stats ============ */
+.stats {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 14px;
+}
+.stat {
+  background: rgba(2,6,23,.6);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.stat-icon { font-size: 16px; margin-bottom: 4px; }
+.stat-value { font-size: 20px; font-weight: 700; }
+.stat-sub { font-size: 12px; color: var(--muted); font-weight: 400; }
+.stat-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.stat-track {
+  height: 4px; background: rgba(255,255,255,.06);
+  border-radius: 4px; overflow: hidden; margin-top: 6px;
+}
+.stat-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--blue), #a78bfa);
+  transition: width .35s ease;
+}
+
+/* ============ Actions ============ */
+.actions {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-bottom: 12px;
+}
+.action-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 14px 10px;
+  border-radius: 14px; border: 1px solid transparent;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: transform .12s, box-shadow .3s;
+}
+.action-btn:active { transform: scale(.96); }
+.action-emoji { font-size: 26px; filter: drop-shadow(0 0 6px rgba(255,255,255,.3)); }
+.action-btn.mobile {
+  background: linear-gradient(135deg, rgba(56,189,248,.2), rgba(139,92,246,.2));
+  border-color: var(--blue); color: var(--blue);
+}
+.action-btn.claim {
+  background: linear-gradient(135deg, rgba(251,191,36,.2), rgba(244,114,182,.2));
+  border-color: var(--gold); color: var(--gold);
+}
+
+/* ============ Resources ============ */
+.resources {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-bottom: 12px;
+}
+.resource-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 10px 4px; border-radius: 12px;
+  background: rgba(2,6,23,.6);
+  border: 1px solid rgba(255,255,255,.08);
+  color: var(--text); cursor: pointer;
+  transition: transform .12s, border-color .2s;
+}
+.resource-btn:active { transform: scale(.95); }
+.resource-btn:hover { border-color: var(--led-color); }
+.res-icon { font-size: 20px; }
+.res-cost { font-size: 10px; color: var(--gold); font-weight: 700; }
+.res-name { font-size: 10px; color: var(--muted); }
+
+/* ============ Ad + Upgrade ============ */
+.ad-btn {
+  position: relative; z-index: 1;
+  width: 100%; padding: 12px; margin-bottom: 10px;
+  background: rgba(52,211,153,.15);
+  border: 1px solid #34d399;
+  color: #34d399;
+  border-radius: 12px; font-size: 13px; font-weight: 600;
+  cursor: pointer;
+}
+.upgrade-btn {
+  position: relative; z-index: 1;
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, rgba(251,191,36,.25), rgba(244,114,182,.2));
+  border: 1px solid var(--gold);
+  color: var(--gold);
+  border-radius: 14px; font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .3s;
+}
+.upgrade-btn:hover { box-shadow: 0 0 20px rgba(251,191,36,.4); }
+.upgrade-btn:active { transform: scale(.97); }
+.upgrade-btn:disabled { opacity: .5; cursor: default; }
+
+/* ============ Log ============ */
+.log {
+  margin-top: 14px; padding: 12px;
+  background: rgba(15,23,42,.5);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 14px;
+  font-size: 11px; color: var(--muted);
+  max-height: 140px; overflow-y: auto;
+}
+.log-item { padding: 3px 0; }
+
+/* ============ Flash ============ */
+.flash {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  padding: 10px 20px;
+  background: rgba(15,23,42,.95);
+  border: 1px solid var(--led-color);
+  color: var(--text); font-size: 13px;
+  border-radius: 30px;
+  opacity: 0; pointer-events: none;
+  transition: all .3s ease;
+  z-index: 900;
+  box-shadow: 0 0 30px var(--led-color);
+}
+.flash.active {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+/* ============ RTL ============ */
+html[dir="rtl"] .brand { flex-direction: row-reverse; }
+html[dir="rtl"] .header { flex-direction: row-reverse; }
