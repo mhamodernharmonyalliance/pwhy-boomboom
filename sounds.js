@@ -7,7 +7,7 @@ let ctx = null;
 let enabled = true;
 
 /**
- * الحصول على Web Audio Context وتفعيل الصوت
+ * الحصول على Web Audio Context وتفعيل الصوت فوراً
  */
 function getCtx() {
   if (!ctx) {
@@ -18,6 +18,20 @@ function getCtx() {
     ctx.resume();
   }
   return ctx;
+}
+
+/**
+ * فك حظر الصوت في متصفح الجوال عند أول تفاعل
+ */
+export function unlockAudio() {
+  try {
+    const ac = getCtx();
+    if (ac && ac.state === 'suspended') {
+      ac.resume();
+    }
+  } catch (e) {
+    console.warn('Audio unlock error:', e);
+  }
 }
 
 /**
@@ -77,33 +91,39 @@ function slide(freqStart, freqEnd, duration = 0.2, type = 'sine', volume = 0.15)
 export const sounds = {
   // نقرة الضغط على القنبلة
   tap() {
+    unlockAudio();
     tone(880, 0.04, 'square', 0.08);
   },
 
   // صوت انفجار خفيف عند التدمير/الكبس
   boom() {
+    unlockAudio();
     slide(200, 40, 0.25, 'sawtooth', 0.2);
   },
 
   // استلام الأرباح/المكافآت
   claim() {
+    unlockAudio();
     tone(660, 0.06, 'sine', 0.15);
     setTimeout(() => tone(990, 0.08, 'sine', 0.15), 50);
   },
 
   // ترقية الأسلحة/المستوى
   upgrade() {
+    unlockAudio();
     slide(300, 900, 0.35, 'triangle', 0.2);
     setTimeout(() => tone(1200, 0.15, 'sine', 0.15), 250);
   },
 
   // خطأ / رصيد غير كافي
   error() {
+    unlockAudio();
     slide(400, 150, 0.25, 'sawtooth', 0.15);
   },
 
   // المكافأة اليومية
   daily() {
+    unlockAudio();
     tone(523, 0.1, 'sine', 0.15);
     setTimeout(() => tone(659, 0.1, 'sine', 0.15), 100);
     setTimeout(() => tone(784, 0.15, 'sine', 0.15), 200);
@@ -111,11 +131,13 @@ export const sounds = {
 
   // التنقل بين القوائم (Navigation)
   nav() {
+    unlockAudio();
     tone(600, 0.03, 'sine', 0.08);
   },
 
   // الشراء من المتجر
   buy() {
+    unlockAudio();
     tone(1000, 0.05, 'sine', 0.12);
     setTimeout(() => tone(1500, 0.08, 'sine', 0.12), 60);
   },
@@ -132,20 +154,13 @@ export const sounds = {
   }
 };
 
-// ==================== Unlock Audio Context ====================
-export function unlockAudio() {
-  try {
-    const ac = getCtx();
-    if (ac.state === 'suspended') {
-      ac.resume();
-    }
-  } catch (e) {}
-}
-
-// تفعيل الصوت تلقائياً مع أول لمسة للمستخدم
+// الاستماع لأول لمسة لفتح المحرك الصوتي فوراً
 if (typeof window !== 'undefined') {
-  document.addEventListener('touchstart', unlockAudio, { once: true });
-  document.addEventListener('click', unlockAudio, { once: true });
+  window.sounds = sounds;
+  const events = ['click', 'touchstart', 'touchend', 'mousedown'];
+  events.forEach(evt => {
+    document.addEventListener(evt, unlockAudio, { once: true, passive: true });
+  });
 }
 
 export default sounds;
