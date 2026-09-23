@@ -1,144 +1,299 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>P Why — Boom Boom</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0f172a">
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PWhy BoomBoom</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body {
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f172a;
+            color: #ffffff;
+        }
+        
+        .boom-btn {
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        .boom-btn:active {
+            transform: scale(0.92);
+        }
+
+        .floating-num {
+            position: absolute;
+            animation: floatUp 0.8s ease-out forwards;
+            pointer-events: none;
+            font-weight: bold;
+            font-size: 1.8rem;
+            color: #f59e0b;
+            text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+        }
+
+        @keyframes floatUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) scale(1.3);
+            }
+        }
+    </style>
 </head>
-<body>
+<body class="h-screen flex flex-col justify-between overflow-hidden pb-16">
 
-  <!-- Splash -->
-  <div id="splash" class="splash">
-    <div class="spinner"></div>
-    <div class="splash-text" data-i18n="loading">جاري التحميل...</div>
-  </div>
-
-  <!-- App -->
-  <div id="app" class="app hidden">
-
-    <!-- ===== HEADER ===== -->
-    <header class="header">
-      <div class="h-user">
-        <div class="avatar-mini" id="user-avatar">💣</div>
-        <div class="h-info">
-          <div class="h-name" id="user-name">—</div>
-          <div class="h-level">
-            <span class="bolt">⚡</span>
-            <span data-i18n="level">المستوى</span> <span id="level-num">1</span>
-          </div>
+    <!-- Header: User info & Balance -->
+    <header class="p-4 flex items-center justify-between border-b border-slate-800 bg-slate-900/60 backdrop-blur">
+        <div class="flex items-center gap-3">
+            <div id="user-avatar" class="w-10 h-10 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-lg border border-amber-500/30">
+                💣
+            </div>
+            <div>
+                <h3 id="user-name" class="font-bold text-sm text-slate-200">لاعب pwhy</h3>
+                <span class="text-xs text-amber-400 flex items-center gap-1">
+                    <i class="fa-solid fa-bolt"></i> مستوى 1
+                </span>
+            </div>
         </div>
-      </div>
-      <div class="h-right">
-        <button class="icon-btn" id="sound-btn" title="Sound">🔊</button>
-        <button class="icon-btn" onclick="toggleLanguage()">🌐</button>
-        <div class="coins-chip">
-          <span class="coin-icon">🪙</span>
-          <span id="coins-header">0</span>
+        <div class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700/50 flex items-center gap-2">
+            <i class="fa-solid fa-coins text-amber-400"></i>
+            <span id="score-header" class="font-bold text-amber-400 text-sm">0</span>
         </div>
-      </div>
     </header>
 
-    <!-- ===== DREAM BAR 314 ===== -->
-    <div class="dream-bar">
-      <div class="dream-row">
-        <span class="dream-real" id="dream-real">$0.0004</span>
-        <span class="dream-soon" id="dream-soon" data-i18n="soon">قريبًا...</span>
-        <span class="dream-target">🎯 314</span>
-      </div>
-      <div class="dream-track">
-        <div class="dream-fill" id="dream-fill"></div>
-      </div>
-    </div>
+    <!-- Main Game View -->
+    <main id="tab-game" class="flex-1 flex flex-col items-center justify-center relative p-4">
+        
+        <!-- Score Display -->
+        <div class="text-center mb-6">
+            <div class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1">إجمالي الـ Booms</div>
+            <div class="text-5xl font-black tracking-tight text-white flex items-center justify-center gap-3">
+                <span id="score" class="text-amber-400">0</span>
+                <i class="fa-solid fa-bomb text-amber-500 text-3xl"></i>
+            </div>
+        </div>
 
-    <!-- ===== TAB: GAME ===== -->
-    <main id="tab-game" class="tab active">
-      <!-- Player Card -->
-      <section class="player-card">
-        <div class="led-halo" id="led-halo"></div>
-        <div class="avatar-big" id="player-emoji">😇</div>
-        <div class="vitals">
-          <span class="vital-dot"></span>
-          <span data-i18n="vitalSigns">المؤشرات الحيوية</span>
+        <!-- Tap Area / Bomb Button -->
+        <div class="relative my-auto flex items-center justify-center">
+            <div id="click-area" class="boom-btn w-64 h-64 rounded-full bg-gradient-to-b from-amber-500 via-orange-600 to-red-600 p-2 shadow-[0_0_50px_rgba(245,158,11,0.3)] cursor-pointer flex items-center justify-center">
+                <div class="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center border-4 border-amber-500/40 relative overflow-hidden">
+                    <span class="text-8xl select-none filter drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">💣</span>
+                    <span class="mt-2 text-amber-400 font-bold text-sm tracking-wider uppercase">BOOM!</span>
+                </div>
+            </div>
         </div>
-      </section>
 
-      <!-- Score -->
-      <div class="score-box">
-        <div class="score-label" data-i18n="coins">العملات</div>
-        <div class="score-value">
-          <span id="coins-main">0</span>
+        <!-- Energy Bar -->
+        <div class="w-full max-w-xs mt-auto bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+            <div class="flex justify-between text-xs mb-1 font-semibold">
+                <span class="text-slate-400 flex items-center gap-1"><i class="fa-solid fa-bolt text-amber-400"></i> الطاقة</span>
+                <span class="text-amber-400"><span id="energy">1000</span> / <span id="max-energy">1000</span></span>
+            </div>
+            <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden">
+                <div id="energy-bar" class="bg-gradient-to-r from-amber-500 to-orange-500 h-full w-full transition-all duration-200"></div>
+            </div>
         </div>
-      </div>
 
-      <!-- Tap Button -->
-      <div class="tap-wrap">
-        <div class="tap-btn" id="click-area">
-          <span class="tap-emoji">📱</span>
-          <span class="tap-label" data-i18n="claim">استلام</span>
-        </div>
-      </div>
-
-      <!-- Energy -->
-      <div class="energy-box">
-        <div class="energy-row">
-          <span class="energy-label">⚡ <span data-i18n="energy">طاقة</span></span>
-          <span class="energy-num"><span id="energy-value">0</span> / <span id="energy-max">10</span></span>
-        </div>
-        <div class="energy-track">
-          <div class="energy-fill" id="energy-fill"></div>
-        </div>
-      </div>
     </main>
 
-    <!-- ===== TAB: SHOP ===== -->
-    <main id="tab-shop" class="tab">
-      <h2 class="tab-title">📦 <span data-i18n="upgrade">المتجر والتطويرات</span></h2>
+    <!-- Upgrades / Boosts Tab -->
+    <main id="tab-shop" class="flex-1 hidden p-4 overflow-y-auto">
+        <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-amber-400">
+            <i class="fa-solid fa-rocket"></i> المتجر والتطويرات
+        </h2>
+        
+        <div class="space-y-3">
+            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-2xl">
+                        👆
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm">قوة النقر (Multitap)</h4>
+                        <p class="text-xs text-slate-400">+1 لكل ضغطة</p>
+                        <span class="text-xs text-amber-400 font-semibold mt-1 block">السعر: 100 💣</span>
+                    </div>
+                </div>
+                <button onclick="buyUpgrade('tap')" class="bg-amber-500 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs hover:bg-amber-400 active:scale-95 transition">
+                    ترقية
+                </button>
+            </div>
 
-      <!-- Levels -->
-      <div class="shop-section">
-        <div class="shop-heading">
-          <span>🏆 <span data-i18n="level">المستويات</span></span>
+            <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center text-2xl">
+                        ⚡
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm">حد الطاقة (Energy Limit)</h4>
+                        <p class="text-xs text-slate-400">+500 حد أقصى للطاقة</p>
+                        <span class="text-xs text-amber-400 font-semibold mt-1 block">السعر: 200 💣</span>
+                    </div>
+                </div>
+                <button onclick="buyUpgrade('energy')" class="bg-amber-500 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs hover:bg-amber-400 active:scale-95 transition">
+                    ترقية
+                </button>
+            </div>
         </div>
-        <div id="levels-list" class="levels-list"></div>
-      </div>
-
-      <!-- Resources -->
-      <div class="shop-section">
-        <div class="shop-heading">
-          <span>💊 <span data-i18n="resources">الموارد النفسية</span></span>
-        </div>
-        <div id="resources-list" class="resources-list"></div>
-      </div>
-
-      <!-- Ad Button -->
-      <button id="ad-btn" class="ad-btn" style="display:none">
-        📺 <span data-i18n="watchAd">شاهد إعلان</span>
-      </button>
-
-      <!-- Log -->
-      <div class="log" id="log"></div>
     </main>
 
-    <!-- ===== BOTTOM NAV ===== -->
-    <nav class="nav">
-      <button class="nav-btn active" id="nav-game" onclick="switchTab('game')">
-        <span class="nav-icon">🎮</span>
-        <span class="nav-label" data-i18n="game">اللعبة</span>
-      </button>
-      <button class="nav-btn" id="nav-shop" onclick="switchTab('shop')">
-        <span class="nav-icon">🛒</span>
-        <span class="nav-label" data-i18n="shop">المتجر</span>
-      </button>
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 px-6 py-2 flex justify-around items-center z-50">
+        <button onclick="switchTab('game')" id="nav-game" class="flex flex-col items-center gap-1 text-amber-400">
+            <i class="fa-solid fa-gamepad text-lg"></i>
+            <span class="text-[10px] font-medium">اللعبة</span>
+        </button>
+        <button onclick="switchTab('shop')" id="nav-shop" class="flex flex-col items-center gap-1 text-slate-500">
+            <i class="fa-solid fa-shop text-lg"></i>
+            <span class="text-[10px] font-medium">المتجر</span>
+        </button>
     </nav>
-  </div>
 
-  <!-- Flash message -->
-  <div id="flash" class="flash" onclick="closeFlash()"></div>
+    <!-- JavaScript Logic -->
+    <script>
+        // Init Telegram Web App
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
 
-  <script type="module" src="app.js"></script>
+        // Game State
+        let score = parseInt(localStorage.getItem('boomboom_score')) || 0;
+        let energy = parseInt(localStorage.getItem('boomboom_energy')) || 1000;
+        let maxEnergy = parseInt(localStorage.getItem('boomboom_max_energy')) || 1000;
+        let pointsPerClick = parseInt(localStorage.getItem('boomboom_ppc')) || 1;
+
+        // UI Elements
+        const scoreEl = document.getElementById('score');
+        const scoreHeaderEl = document.getElementById('score-header');
+        const energyEl = document.getElementById('energy');
+        const maxEnergyEl = document.getElementById('max-energy');
+        const energyBarEl = document.getElementById('energy-bar');
+        const clickArea = document.getElementById('click-area');
+
+        // Update UI
+        function updateUI() {
+            scoreEl.textContent = score.toLocaleString();
+            scoreHeaderEl.textContent = score.toLocaleString();
+            energyEl.textContent = energy;
+            maxEnergyEl.textContent = maxEnergy;
+            const energyPercent = (energy / maxEnergy) * 100;
+            energyBarEl.style.width = `${energyPercent}%`;
+
+            // Save State
+            localStorage.setItem('boomboom_score', score);
+            localStorage.setItem('boomboom_energy', energy);
+            localStorage.setItem('boomboom_max_energy', maxEnergy);
+            localStorage.setItem('boomboom_ppc', pointsPerClick);
+        }
+
+        // Load Telegram User Info
+        if (tg?.initDataUnsafe?.user) {
+            const user = tg.initDataUnsafe.user;
+            document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+            if (user.first_name) {
+                document.getElementById('user-avatar').textContent = user.first_name[0].toUpperCase();
+            }
+        }
+
+        // Click Handler
+        clickArea.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            for (let i = 0; i < e.touches.length; i++) {
+                handleTap(e.touches[i].clientX, e.touches[i].clientY);
+            }
+        });
+
+        clickArea.addEventListener('click', (e) => {
+            if (e.pointerType === 'mouse') {
+                handleTap(e.clientX, e.clientY);
+            }
+        });
+
+        function handleTap(x, y) {
+            if (energy < pointsPerClick) return;
+
+            score += pointsPerClick;
+            energy -= pointsPerClick;
+            updateUI();
+
+            // Trigger Haptic Feedback in Telegram
+            if (tg?.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
+
+            // Create Floating Animation Number
+            createFloatingNumber(x, y);
+        }
+
+        function createFloatingNumber(x, y) {
+            const num = document.createElement('div');
+            num.className = 'floating-num';
+            num.textContent = `+${pointsPerClick}`;
+            num.style.left = `${x - 15}px`;
+            num.style.top = `${y - 30}px`;
+            document.body.appendChild(num);
+
+            setTimeout(() => {
+                num.remove();
+            }, 800);
+        }
+
+        // Energy Regeneration Interval
+        setInterval(() => {
+            if (energy < maxEnergy) {
+                energy = Math.min(maxEnergy, energy + 2);
+                updateUI();
+            }
+        }, 1000);
+
+        // Shop Upgrades Logic
+        window.buyUpgrade = function(type) {
+            if (type === 'tap' && score >= 100) {
+                score -= 100;
+                pointsPerClick += 1;
+                alert('تمت ترقية قوة النقر بنجاح!');
+            } else if (type === 'energy' && score >= 200) {
+                score -= 200;
+                maxEnergy += 500;
+                energy += 500;
+                alert('تمت ترقية حد الطاقة بنجاح!');
+            } else {
+                alert('عذراً، لا تمتلك رصيد كافي من הـ Booms!');
+            }
+            updateUI();
+        };
+
+        // Navigation Switcher
+        window.switchTab = function(tab) {
+            document.getElementById('tab-game').classList.add('hidden');
+            document.getElementById('tab-shop').classList.add('hidden');
+            document.getElementById('nav-game').className = 'flex flex-col items-center gap-1 text-slate-500';
+            document.getElementById('nav-shop').className = 'flex flex-col items-center gap-1 text-slate-500';
+
+            if (tab === 'game') {
+                document.getElementById('tab-game').classList.remove('hidden');
+                document.getElementById('nav-game').className = 'flex flex-col items-center gap-1 text-amber-400';
+            } else {
+                document.getElementById('tab-shop').classList.remove('hidden');
+                document.getElementById('nav-shop').className = 'flex flex-col items-center gap-1 text-amber-400';
+            }
+        };
+
+        // Initial Call
+        updateUI();
+    </script>
 </body>
 </html>
