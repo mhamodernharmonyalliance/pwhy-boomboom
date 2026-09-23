@@ -32,6 +32,5 @@ export const CONFIG = {
     rewardCoins: 10,
     cooldown: 60000,          // دقيقة بين كل إعلان
   },
-
-  firebase: 'https://YOUR-PROJECT.firebaseio.com',
+firebase: 'https://pwhy-boomboom-default-rtdb.europe-west1.firebasedatabase.app',
 };
