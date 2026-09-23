@@ -11,43 +11,57 @@
 </head>
 <body class="bg-slate-950 text-white h-screen flex flex-col justify-between items-center p-6 select-none overflow-hidden">
 
-    <!-- Header: اسم المستخدم والترتيب -->
-    <div class="w-full flex justify-between items-center bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
-        <div class="flex items-center gap-3">
-            <div id="user-avatar" class="w-10 h-10 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-lg border border-amber-500/30">
-                💣
-            </div>
-            <div>
-                <h3 id="user-name" class="font-bold text-sm text-slate-200">لاعب...</h3>
-                <span class="text-xs text-amber-400">PWhy BoomBoom</span>
-            </div>
+    <!-- Header: اسم المستخدم والتعديلات والترتيب -->
+    <div class="w-full flex flex-col gap-3">
+        <!-- شريط الخيارات السريع (اللغة والصوت) -->
+        <div class="flex justify-between items-center text-xs text-slate-400 px-1">
+            <button id="lang-btn" class="bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded-lg border border-slate-700 transition-colors text-amber-400 font-bold">
+                English
+            </button>
+            <button id="sound-btn" class="bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded-lg border border-slate-700 transition-colors">
+                🔊 <span data-i18n="soundLabel">الصوت</span>
+            </button>
         </div>
-        <div class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700/50 flex items-center gap-2">
-            <span id="score-header" class="font-bold text-amber-400 text-sm">0</span> 💣
+
+        <div class="w-full flex justify-between items-center bg-slate-900/80 p-4 rounded-2xl border border-slate-800">
+            <div class="flex items-center gap-3">
+                <div id="user-avatar" class="w-10 h-10 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-lg border border-amber-500/30">
+                    💣
+                </div>
+                <div>
+                    <h3 id="user-name" class="font-bold text-sm text-slate-200" data-i18n="guest">لاعب...</h3>
+                    <span class="text-xs text-amber-400">PWhy BoomBoom</span>
+                </div>
+            </div>
+            <div class="bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-700/50 flex items-center gap-2">
+                <span id="score-header" class="font-bold text-amber-400 text-sm">0</span> 💣
+            </div>
         </div>
     </div>
 
     <!-- Main Game: زر الضغط الرئيسي -->
     <div class="flex flex-col items-center justify-center my-auto">
         <div class="text-center mb-6">
-            <div class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1">الرصيد الحالي</div>
+            <div class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-1" data-i18n="gameTitle">إجمالي الـ Booms</div>
             <div id="score" class="text-6xl font-black text-amber-400">0</div>
         </div>
 
-        <button id="boom-btn" class="w-60 h-60 rounded-full bg-gradient-to-b from-amber-500 via-orange-600 to-red-600 p-2 shadow-[0_0_50px_rgba(245,158,11,0.3)] active:scale-95 transition-transform flex items-center justify-center">
+        <button id="boom-btn" class="w-60 h-60 rounded-full bg-gradient-to-b from-amber-500 via-orange-600 to-red-600 p-2 shadow-[0_0_50px_rgba(245,158,11,0.3)] active:scale-95 transition-transform flex items-center justify-center cursor-pointer">
             <div class="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center border-4 border-amber-500/40">
                 <span class="text-7xl">💣</span>
-                <span class="mt-2 text-amber-400 font-bold text-xs">اضغط هنا</span>
+                <span class="mt-2 text-amber-400 font-bold text-xs" data-i18n="tapUpgradeTitle">اضغط هنا</span>
             </div>
         </button>
     </div>
 
     <!-- Footer: معلومات بسيطة -->
-    <div class="text-xs text-slate-500 text-center pb-4">
-        تطبيق مصغر يعمل داخل تليجرام
+    <div class="text-xs text-slate-500 text-center pb-2">
+        PWhy Mini App
     </div>
 
-    <!-- ربط الملف البرمجي -->
-    <script src="app.js"></script>
+    <!-- ربط الملفات البرمجية كـ Modules -->
+    <script type="module" src="i18n.js"></script>
+    <script type="module" src="sounds.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
