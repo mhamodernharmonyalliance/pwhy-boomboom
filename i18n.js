@@ -34,6 +34,9 @@ const I18N = {
     resetDay: 'New day. He opened the app.',
     stillWaiting: 'Still waiting...',
     years: 'years',
+     game: 'Game',
+shop: 'Shop',
+resources: 'Resources',
   },
   ar: {
     loading: 'جاري التحميل...',
@@ -66,6 +69,9 @@ const I18N = {
     resetDay: 'يوم جديد. فتح التطبيق.',
     stillWaiting: 'ما زال ينتظر...',
     years: 'سنة',
+     game: 'اللعبة',
+shop: 'المتجر',
+resources: 'الموارد',
   },
 };
 
