@@ -1,110 +1,95 @@
 /* ==========================================
-   i18n — الترجمة
+   i18n - Translations System
    ========================================== */
 
 const I18N = {
   en: {
-    loading: 'Loading...',
-    since: 'Since',
-    energy: 'Energy',
-    coins: 'Coins',
-    claim: 'Collect',
-    dailyBonus: 'Daily Bonus',
-    vitalSigns: 'Vital Signs',
-    level: 'Level',
-    upgrade: 'Upgrade',
-    maxLevel: 'Max Level Reached',
-    soon: 'Soon...',
-    dream: 'Dream',
-    close: 'Close',
-    guest: 'Guest',
-    noPurchases: 'No purchases yet',
-    payNotTg: '⚠️ Payment is only available in Telegram',
-    paySuccess: '🎉 Thank you! Level upgraded.',
-    payFail: '⚠️ Payment failed.',
-    payError: '❌ Failed to create invoice',
-    payNetErr: '⚠️ Connection error',
-    adsDisabled: '📺 Ads coming soon',
-    notEnoughEnergy: '⚠️ Not enough energy',
-    anesthesiaUsed: '💊 Sedated. For now.',
-    patienceUsed: '🧘 A little patience...',
-    conspiracyUsed: '🕵️ Claim accelerated (allegedly)',
-    watchAd: '📺 Watch Ad (+{n} coins)',
-    useResource: 'Use',
-    resetDay: 'New day. He opened the app.',
-    stillWaiting: 'Still waiting...',
-    years: 'years',
-     game: 'Game',
-shop: 'Shop',
-resources: 'Resources',
+    loading: "Loading...",
+    purchaseHistory: "Purchase History",
+    openingInvoice: "Opening invoice...",
+    close: "Close",
+    guest: "Guest",
+    credits: "Booms",
+    noPurchases: "No purchases yet",
+    payNotTg: "⚠️ Payment is only available in Telegram",
+    paySuccess: "🎉 Thank you! Purchase applied.",
+    payFail: "⚠️ Payment failed. Try again.",
+    payError: "❌ Failed to create invoice",
+    payNetErr: "⚠️ Connection error",
+    priceLabel: "⭐ Stars",
+    gameTitle: "Total Booms",
+    energyLabel: "Energy",
+    levelLabel: "Level 1",
+    upgradesTitle: "Upgrades & Boosts",
+    starsStoreTitle: "Telegram Stars Store",
+    tapUpgradeTitle: "Tap Power (+1)",
+    tapUpgradeCost: "Cost: 100 💣",
+    energyUpgradeTitle: "Energy Limit (+500)",
+    energyUpgradeCost: "Cost: 200 💣",
+    navGame: "Game",
+    navShop: "Shop"
   },
   ar: {
-    loading: 'جاري التحميل...',
-    since: 'منذ',
-    energy: 'طاقة',
-    coins: 'عملات',
-    claim: 'استلام',
-    dailyBonus: 'مكافأة الحضور',
-    vitalSigns: 'المؤشرات الحيوية',
-    level: 'المستوى',
-    upgrade: 'ترقية',
-    maxLevel: 'وصلت الحد الأقصى',
-    soon: 'قريبًا...',
-    dream: 'الحلم',
-    close: 'إغلاق',
-    guest: 'ضيف',
-    noPurchases: 'لا توجد مشتريات',
-    payNotTg: '⚠️ الدفع متاح داخل Telegram فقط',
-    paySuccess: '🎉 شكراً! تم ترقية المستوى.',
-    payFail: '⚠️ فشل الدفع.',
-    payError: '❌ فشل إنشاء الفاتورة',
-    payNetErr: '⚠️ خطأ في الاتصال',
-    adsDisabled: '📺 الإعلانات قريبًا',
-    notEnoughEnergy: '⚠️ الطاقة لا تكفي',
-    anesthesiaUsed: '💊 تم التخدير. مؤقتًا.',
-    patienceUsed: '🧘 صبر قليل...',
-    conspiracyUsed: '🕵️ تم تسريع الاستلام (مزعوم)',
-    watchAd: '📺 شاهد إعلان (+{n} عملة)',
-    useResource: 'استخدم',
-    resetDay: 'يوم جديد. فتح التطبيق.',
-    stillWaiting: 'ما زال ينتظر...',
-    years: 'سنة',
-     game: 'اللعبة',
-shop: 'المتجر',
-resources: 'الموارد',
-  },
+    loading: "جاري التحميل...",
+    purchaseHistory: "سجل المشتريات",
+    openingInvoice: "جاري فتح الفاتورة...",
+    close: "إغلاق",
+    guest: "لاعب pwhy",
+    credits: "نقطة",
+    noPurchases: "لا توجد مشتريات بعد",
+    payNotTg: "⚠️ الدفع متاح فقط داخل Telegram",
+    paySuccess: "🎉 شكراً لك! تم تطبيق الشراء.",
+    payFail: "⚠️ فشل الدفع. جرب مرة أخرى.",
+    payError: "❌ فشل إنشاء الفاتورة",
+    payNetErr: "⚠️ خطأ في الاتصال",
+    priceLabel: "⭐ نجمة",
+    gameTitle: "إجمالي الـ Booms",
+    energyLabel: "الطاقة",
+    levelLabel: "مستوى 1",
+    upgradesTitle: "التطويرات بالنقاط",
+    starsStoreTitle: "متجر النجوم (Telegram Stars)",
+    tapUpgradeTitle: "قوة النقر (Multitap)",
+    tapUpgradeCost: "السعر: 100 💣",
+    energyUpgradeTitle: "حد الطاقة (Energy Limit)",
+    energyUpgradeCost: "السعر: 200 💣",
+    navGame: "اللعبة",
+    navShop: "المتجر"
+  }
 };
 
-let currentLang = localStorage.getItem('lang') || 'ar';
+let currentLang = localStorage.getItem('lang') || (window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code === 'ar' ? 'ar' : 'en');
 
-export function t(key, vars = {}) {
-  const dict = I18N[currentLang] || I18N.ar;
-  let str = dict[key] || I18N.ar[key] || key;
-  Object.entries(vars).forEach(([k, v]) => {
-    str = str.replace(`{${k}}`, v);
-  });
-  return str;
+function t(key) {
+  const dict = I18N[currentLang] || I18N.en;
+  return dict[key] || I18N.en[key] || key;
 }
 
-export function getLang() { return currentLang; }
+function getLang() { return currentLang; }
 
-export function setLanguage(lang) {
-  if (!I18N[lang]) lang = 'ar';
+function setLanguage(lang) {
+  if (!I18N[lang]) lang = 'en';
   currentLang = lang;
   localStorage.setItem('lang', lang);
   document.documentElement.lang = lang;
-  document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    el.textContent = t(el.getAttribute('data-i18n'));
-  });
-  if (window.__onLangChange) window.__onLangChange();
+  document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
+  applyTranslations();
+  if (typeof renderProducts === 'function') renderProducts();
+  if (typeof renderHistory === 'function') renderHistory();
 }
 
-export function toggleLanguage() {
-  setLanguage(currentLang === 'ar' ? 'en' : 'ar');
+function toggleLanguage() {
+  setLanguage(currentLang === 'en' ? 'ar' : 'en');
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (key) el.textContent = t(key);
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   document.documentElement.lang = currentLang;
-  document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+  document.documentElement.dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
+  applyTranslations();
 });
