@@ -1,18 +1,28 @@
 {
   "id": "/",
-  "name": "P Why — Boom Boom",
-  "short_name": "P Why",
-  "description": "لعبة ساخرة عن انتظار 314 منذ 1919",
+  "name": "PWhy BoomBoom - Telegram Stars Store",
+  "short_name": "PWhy Boom",
+  "description": "لعبة PWhy BoomBoom للتفاعل والشراء عبر نجوم تليجرام",
   "scope": "/",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#030712",
-  "theme_color": "#38bdf8",
+  "background_color": "#0f172a",
+  "theme_color": "#f59e0b",
   "lang": "ar",
   "dir": "rtl",
   "icons": [
-    { "src": "/assets/logo-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/assets/logo-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "/assets/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }
