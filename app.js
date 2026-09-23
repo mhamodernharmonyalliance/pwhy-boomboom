@@ -1,39 +1,23 @@
 /* ==========================================
-   PWhy BoomBoom - Combined Game & Stars JS
+   PWhy BoomBoom - Main App & Game Logic
    ========================================== */
 
-const WORKER_URL = 'https://mhaapp.workers.dev';
+import { sounds } from './sounds.js';
+import { t, getLang, toggleLanguage, applyTranslations } from './i18n.js';
+
+// تحديد رابط الـ Worker تلقائياً أو استخدام الرابط المحلي/المرفوع
+const WORKER_URL = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+  ? 'http://localhost:8787'
+  : window.location.origin;
 
 let userData = null;
 let products = [];
 
-// Game State Variables
+// متغيرات حالة اللعبة (Game State)
 let score = parseInt(localStorage.getItem('boomboom_score')) || 0;
 let energy = parseInt(localStorage.getItem('boomboom_energy')) || 1000;
 let maxEnergy = parseInt(localStorage.getItem('boomboom_max_energy')) || 1000;
 let pointsPerClick = parseInt(localStorage.getItem('boomboom_ppc')) || 1;
-
-// ==================== LANGUAGE HELPER ====================
-function getLang() {
-  const tgLang = window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code;
-  return tgLang === 'ar' ? 'ar' : 'en';
-}
-
-function t(key) {
-  const lang = getLang();
-  const dict = {
-    guest: { ar: 'لاعب pwhy', en: 'pwhy Player' },
-    loading: { ar: 'جاري تحميل المنتجات...', en: 'Loading products...' },
-    priceLabel: { ar: '⭐ نجمة', en: '⭐ Stars' },
-    noPurchases: { ar: 'لا توجد مشتريات سابقة', en: 'No purchase history' },
-    payNotTg: { ar: 'يجب فتح اللعبة داخل تطبيق تليجرام للشراء!', en: 'Open in Telegram to buy!' },
-    payError: { ar: 'فشل في إنشاء فاتورة الشراء', en: 'Failed to create invoice' },
-    paySuccess: { ar: 'تمت عملية الشراء بنجاح! 🎉', en: 'Purchase successful! 🎉' },
-    payFail: { ar: 'تم إلغاء أو فشل عملية الشراء', en: 'Payment canceled or failed' },
-    payNetErr: { ar: 'حدث خطأ في الاتصال بالشبكة', en: 'Network error occurred' }
-  };
-  return dict[key]?.[lang] || dict[key]?.en || key;
-}
 
 // ==================== INIT ====================
 (async function init() {
@@ -46,10 +30,10 @@ function t(key) {
     }
   }
 
-  // Setup Click Events & Intervals
+  // إعداد أحداث النقر والتوقيت
   setupGameEvents();
 
-  // Load backend data
+  // تحميل البيانات من الخادم
   try {
     await loadUser();
     await loadProducts();
@@ -61,16 +45,15 @@ function t(key) {
   } catch (e) {
     console.error('Init error:', e);
     hideSplash();
-    showApp(); // Show app even in guest/fallback mode
+    showApp(); // إظهار التطبيق حتى في حال عدم تسجيل الدخول
     renderUser();
   }
 })();
 
-// ==================== API ====================
+// ==================== API LOGIC ====================
 async function loadUser() {
   const initData = window.Telegram?.WebApp?.initData;
   if (!initData) {
-    // Guest mode / Fallback
     userData = {
       user: { firstName: t('guest') },
       data: { credits: score, purchases: [] }
@@ -78,26 +61,36 @@ async function loadUser() {
     return;
   }
 
-  const res = await fetch(`${WORKER_URL}/api/me`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ initData })
-  });
-  const result = await res.json();
-  if (!result.ok) throw new Error(result.error || 'Auth failed');
-  userData = result;
+  try {
+    const res = await fetch(`${WORKER_URL}/api/me`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData })
+    });
+    const result = await res.json();
+    if (!result.ok) throw new Error(result.error || 'Auth failed');
+    userData = result;
 
-  // Sync server credits to score if available
-  if (userData.data?.credits !== undefined) {
-    score = userData.data.credits;
-    updateUI();
+    if (userData.data?.credits !== undefined && userData.data.credits > 0) {
+      score = userData.data.credits;
+      updateUI();
+    }
+  } catch (err) {
+    userData = {
+      user: { firstName: t('guest') },
+      data: { credits: score, purchases: [] }
+    };
   }
 }
 
 async function loadProducts() {
-  const res = await fetch(`${WORKER_URL}/api/products`);
-  const data = await res.json();
-  products = data.products || [];
+  try {
+    const res = await fetch(`${WORKER_URL}/api/products`);
+    const data = await res.json();
+    products = data.products || [];
+  } catch (e) {
+    products = [];
+  }
 }
 
 // ==================== GAME LOGIC ====================
@@ -118,7 +111,7 @@ function setupGameEvents() {
     }
   });
 
-  // Energy Regenerator
+  // تجديد الطاقة تلقائياً كل ثانية
   setInterval(() => {
     if (energy < maxEnergy) {
       energy = Math.min(maxEnergy, energy + 2);
@@ -136,10 +129,8 @@ function handleTap(x, y) {
   energy -= pointsPerClick;
   updateUI();
 
-  // تشغيل الصوت عند النقر
-  if (window.sounds && typeof window.sounds.tap === 'function') {
-    window.sounds.tap();
-  }
+  // تشغيل الصوت والاهتزاز
+  sounds.tap();
 
   const tg = window.Telegram?.WebApp;
   if (tg?.HapticFeedback) {
@@ -177,28 +168,28 @@ function updateUI() {
     energyBarEl.style.width = `${energyPercent}%`;
   }
 
-  // Local Storage Sync
+  // الحفظ المحلي للتقدم
   localStorage.setItem('boomboom_score', score);
   localStorage.setItem('boomboom_energy', energy);
   localStorage.setItem('boomboom_max_energy', maxEnergy);
   localStorage.setItem('boomboom_ppc', pointsPerClick);
 }
 
-// In-Game Upgrades with Score Points
+// ترقية المهارات داخل اللعبة بالنقاط
 window.buyUpgrade = function(type) {
   if (type === 'tap' && score >= 100) {
     score -= 100;
     pointsPerClick += 1;
-    if (window.sounds && typeof window.sounds.claim === 'function') window.sounds.claim();
-    showAlert('🎉', 'نجاح', 'تمت ترقية قوة النقر بنجاح!');
+    sounds.upgrade();
+    showAlert('🎉', t('paySuccess'), t('tapUpgradeTitle'));
   } else if (type === 'energy' && score >= 200) {
     score -= 200;
     maxEnergy += 500;
     energy += 500;
-    if (window.sounds && typeof window.sounds.claim === 'function') window.sounds.claim();
-    showAlert('🎉', 'نجاح', 'تمت ترقية حد الطاقة بنجاح!');
+    sounds.upgrade();
+    showAlert('🎉', t('paySuccess'), t('energyUpgradeTitle'));
   } else {
-    if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
+    sounds.error();
     showAlert('⚠️', 'تنبيه', 'عذراً، لا تمتلك رصيد كافي من الـ Booms!');
   }
   updateUI();
@@ -207,8 +198,10 @@ window.buyUpgrade = function(type) {
 // ==================== UI RENDER ====================
 function hideSplash() {
   const s = document.getElementById('splash');
-  if (s) s.classList.add('hidden');
-  setTimeout(() => s?.remove(), 500);
+  if (s) {
+    s.style.opacity = '0';
+    setTimeout(() => s.remove(), 400);
+  }
 }
 
 function showApp() {
@@ -245,17 +238,17 @@ function renderProducts() {
     const titleText = stripIcon(title);
 
     return `
-      <div class="bg-slate-900 p-4 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/5 to-transparent flex items-center justify-between mb-3">
+      <div class="bg-slate-900/80 p-4 rounded-2xl border border-amber-500/30 flex items-center justify-between mb-3 shadow-lg">
         <div class="flex items-center gap-3">
           <div class="w-12 h-12 rounded-xl bg-yellow-500/20 text-yellow-400 flex items-center justify-center text-2xl">${icon}</div>
           <div>
-            <h4 class="font-bold text-sm">${titleText}</h4>
+            <h4 class="font-bold text-sm text-slate-100">${titleText}</h4>
             <p class="text-xs text-slate-400">${desc}</p>
-            <span class="text-xs text-yellow-400 font-semibold mt-1 block">السعر: ${p.price} ${t('priceLabel')}</span>
+            <span class="text-xs text-yellow-400 font-semibold mt-1 block">${t('priceLabel')}: ${p.price} ⭐</span>
           </div>
         </div>
-        <button onclick="buyProduct('${p.id}')" class="bg-yellow-400 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs hover:bg-yellow-300 active:scale-95 transition">
-          شراء ⭐
+        <button onclick="buyProduct('${p.id}')" class="bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 px-4 py-2 rounded-xl font-bold text-xs hover:brightness-110 active:scale-95 transition">
+          ${t('navShop')} ⭐
         </button>
       </div>
     `;
@@ -276,7 +269,7 @@ function renderHistory() {
 
   section.classList.remove('hidden');
   list.innerHTML = purchases.slice().reverse().map(p => {
-    const date = new Date(p.at).toLocaleDateString();
+    const date = new Date(p.date || Date.now()).toLocaleDateString();
     return `
       <div class="flex justify-between items-center py-2 border-b border-slate-800 text-xs text-slate-300">
         <span>${p.productId}</span>
@@ -295,13 +288,13 @@ function stripIcon(title) {
   return title ? title.replace(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})\s*/u, '').trim() : '';
 }
 
-// ==================== BUY WITH TELEGRAM STARS ====================
-async function buyProduct(productId) {
+// ==================== TELEGRAM STARS PURCHASE ====================
+window.buyProduct = async function(productId) {
   const tg = window.Telegram?.WebApp;
   const initData = tg?.initData;
 
   if (!tg || !tg.openInvoice || !initData) {
-    if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
+    sounds.error();
     showAlert('⚠️', 'تنبيه', t('payNotTg'));
     return;
   }
@@ -320,37 +313,38 @@ async function buyProduct(productId) {
     if (payModal) payModal.classList.remove('active');
 
     if (!data.url) {
-      if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
+      sounds.error();
       showAlert('❌', 'خطأ', data.error || t('payError'));
       return;
     }
 
-    // Open Official Telegram Stars Payment Invoice
+    // فتح نافذة دفع النجوم عبر تليجرام الرسمي
     tg.openInvoice(data.url, (status) => {
       if (status === 'paid') {
-        if (window.sounds && typeof window.sounds.claim === 'function') window.sounds.claim();
+        sounds.claim();
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showAlert('🎉', 'نجاح', t('paySuccess'));
         
-        // Bonus reward on client side immediately (or wait for reload)
-        score += 5000;
+        // تطبيق المكافأة فوراً
+        score += 10000;
         updateUI();
 
         setTimeout(() => location.reload(), 2000);
       } else if (status === 'failed') {
-        if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
+        sounds.error();
         showAlert('⚠️', 'إلغاء', t('payFail'));
       }
     });
   } catch (e) {
     if (payModal) payModal.classList.remove('active');
-    if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
+    sounds.error();
     showAlert('⚠️', 'خطأ', t('payNetErr'));
   }
-}
+};
 
 // ==================== NAVIGATION SWITCHER ====================
 window.switchTab = function(tab) {
+  sounds.nav();
   const tabGame = document.getElementById('tab-game');
   const tabShop = document.getElementById('tab-shop');
   const navGame = document.getElementById('nav-game');
@@ -363,11 +357,18 @@ window.switchTab = function(tab) {
 
   if (tab === 'game') {
     if (tabGame) tabGame.classList.remove('hidden');
-    if (navGame) navGame.className = 'flex flex-col items-center gap-1 text-amber-400';
+    if (navGame) navGame.className = 'flex flex-col items-center gap-1 text-amber-400 font-bold';
   } else {
     if (tabShop) tabShop.classList.remove('hidden');
-    if (navShop) navShop.className = 'flex flex-col items-center gap-1 text-amber-400';
+    if (navShop) navShop.className = 'flex flex-col items-center gap-1 text-amber-400 font-bold';
   }
+};
+
+// ==================== LANGUAGE TOGGLE ====================
+window.toggleLang = function() {
+  toggleLanguage();
+  renderProducts();
+  renderUser();
 };
 
 // ==================== ALERTS ====================
@@ -388,6 +389,7 @@ function showAlert(icon, title, message) {
   }
 }
 
-function closeAlert() {
+window.closeAlert = function() {
+  sounds.nav();
   document.getElementById('alert-modal')?.classList.remove('active');
-}
+};
