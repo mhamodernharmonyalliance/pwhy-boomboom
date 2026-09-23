@@ -10,7 +10,7 @@ const corsHeaders = {
 
 export default {
   async fetch(request, env, ctx) {
-    // التعامل مع طلبات Preflight (CORS)
+    // 1. التعامل مع طلبات Preflight (CORS)
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders });
     }
@@ -18,38 +18,54 @@ export default {
     const url = new URL(request.url);
 
     try {
-      // 1. مسار الفحص المباشر (Health Check)
+      // 2. مسار فحص الحالة (Health Check)
       if (url.pathname === '/' || url.pathname === '/api/health') {
         return jsonResponse({
           ok: true,
+          status: 'online',
           hasToken: !!env.BOT_TOKEN,
           hasFirebase: !!env.FIREBASE_URL,
         });
       }
 
-      // 2. مسار جلب قائمة المنتجات
+      // 3. مسار جلب قائمة المنتجات والمتجر
       if (url.pathname === '/api/products') {
         const products = getProductsList();
         return jsonResponse({ ok: true, products });
       }
 
-      // 3. مسار جلب بيانات المستخدم
+      // 4. مسار جلب بيانات المستخدم وتدقيق التوثيق
       if (url.pathname === '/api/me' && request.method === 'POST') {
         const body = await request.json().catch(() => ({}));
         if (!body.initData) {
           return jsonResponse({ ok: false, error: 'Missing initData' }, 400);
         }
         
-        // استخراج بيانات المستخدم بأسلوب مبسط
         const user = parseInitDataUser(body.initData);
+        if (!user) {
+          return jsonResponse({ ok: false, error: 'Invalid user data' }, 401);
+        }
+
+        // جلب بيانات اللاعب من Firebase إذا كان معرّفاً
+        let userData = { credits: 0, purchases: [] };
+        if (env.FIREBASE_URL) {
+          try {
+            const fbRes = await fetch(`${env.FIREBASE_URL}/users/${user.id}.json`);
+            const fbData = await fbRes.json();
+            if (fbData) userData = fbData;
+          } catch (e) {
+            /* التغاضي عن الخطأ والعودة بالبيانات الافتراضية */
+          }
+        }
+
         return jsonResponse({
           ok: true,
-          user: user || { firstName: 'Player' },
-          data: { credits: 0, purchases: [] }
+          user: user,
+          data: userData
         });
       }
 
-      // 4. مسار إنشاء فاتورة نجوم تليجرام (Telegram Stars Invoice)
+      // 5. مسار إنشاء رابط فاتورة نجوم تليجرام (Telegram Stars Invoice)
       if (url.pathname === '/api/create-invoice' && request.method === 'POST') {
         if (!env.BOT_TOKEN) {
           return jsonResponse({ ok: false, error: 'Bot token configuration is missing' }, 500);
@@ -64,10 +80,11 @@ export default {
         }
 
         const user = parseInitDataUser(initData);
-        const title = product.title?.[lang] || product.title?.ar || product.title?.en || product.id;
-        const description = product.desc?.[lang] || product.desc?.ar || product.desc?.en || 'PWhy BoomBoom Purchase';
+        const userLang = lang || 'ar';
+        const title = product.title?.[userLang] || product.title?.ar || product.title?.en || product.id;
+        const description = product.desc?.[userLang] || product.desc?.ar || product.desc?.en || 'PWhy BoomBoom Purchase';
 
-        // طلب إنشاء الفاتورة من Telegram API
+        // طلب إنشاء رابط الفاتورة من Telegram Bot API
         const tgRes = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/createInvoiceLink`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -75,8 +92,8 @@ export default {
             title: title,
             description: description,
             payload: JSON.stringify({ productId, userId: user?.id || 0, at: Date.now() }),
-            provider_token: "", // يجب أن تكون فارغة لنجوم تليجرام
-            currency: "XTR",   // رمز عملة النجوم
+            provider_token: "", // فارغ حصراً لعملة النجوم (Stars)
+            currency: "XTR",   // رمز عملة Telegram Stars
             prices: [{ label: title, amount: product.price }]
           })
         });
@@ -89,11 +106,11 @@ export default {
         return jsonResponse({ ok: true, url: tgData.result });
       }
 
-      // 5. مسار استقبال الـ Webhook الخاص بتليجرام
+      // 6. مسار استقبال الـ Webhook الخاص بـ Telegram
       if (url.pathname === '/webhook' && request.method === 'POST') {
         const update = await request.json().catch(() => ({}));
 
-        // أ) الموافقة التلقائية على PreCheckout
+        // أ) الموافقة التلقائية على طلب الفحص المسبق (pre_checkout_query)
         if (update.pre_checkout_query) {
           await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/answerPreCheckoutQuery`, {
             method: 'POST',
@@ -106,12 +123,38 @@ export default {
           return jsonResponse({ ok: true });
         }
 
-        // ب) معالجة نجاح عملية الدفع (Successful Payment)
+        // ب) معالجة نجاح عملية الدفع (successful_payment)
         if (update.message?.successful_payment) {
           const payment = update.message.successful_payment;
           const payload = JSON.parse(payment.invoice_payload || '{}');
-          
-          // هنا يمكن إضافة منطق حفظ المشتريات في Firebase
+          const userId = payload.userId || update.message.from?.id;
+          const productId = payload.productId;
+
+          // حفظ المشتريات وإضافة النقاط للمستخدم في Firebase
+          if (env.FIREBASE_URL && userId && productId) {
+            const product = getProductsList().find(p => p.id === productId);
+            const rewardBooms = product?.id === 'stars_10' ? 10000 : 0;
+
+            await fetch(`${env.FIREBASE_URL}/users/${userId}/purchases.json`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                productId,
+                telegramPaymentChargeId: payment.telegram_payment_charge_id,
+                totalAmount: payment.total_amount,
+                date: new Date().toISOString()
+              })
+            });
+
+            if (rewardBooms > 0) {
+              // إضافة الرصيد لحساب اللاعب
+              await fetch(`${env.FIREBASE_URL}/users/${userId}/credits.json`, {
+                method: 'PUT',
+                body: JSON.stringify(rewardBooms)
+              });
+            }
+          }
+
           return jsonResponse({ ok: true, received: true });
         }
 
@@ -146,8 +189,9 @@ function parseInitDataUser(initDataStr) {
     const u = JSON.parse(userStr);
     return {
       id: u.id,
-      firstName: u.first_name,
-      username: u.username
+      firstName: u.first_name || 'Player',
+      username: u.username || '',
+      languageCode: u.language_code || 'en'
     };
   } catch (e) {
     return null;
