@@ -48,7 +48,7 @@
 
         <!-- Tap Area / Bomb Button -->
         <div class="relative my-auto flex items-center justify-center">
-            <div id="click-area" class="boom-btn w-64 h-64 rounded-full bg-gradient-to-b from-amber-500 via-orange-600 to-red-600 p-2 shadow-[0_0_50px_rgba(245,158,11,0.3)] cursor-pointer flex items-center justify-center">
+            <div id="click-area" class="boom-btn w-64 h-64 rounded-full bg-gradient-to-b from-amber-500 via-orange-600 to-red-600 p-2 shadow-[0_0_50px_rgba(245,158,11,0.3)] cursor-pointer flex items-center justify-center active:scale-95 transition-transform duration-75">
                 <div class="w-full h-full rounded-full bg-slate-950 flex flex-col items-center justify-center border-4 border-amber-500/40 relative overflow-hidden">
                     <span class="text-8xl select-none filter drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]">💣</span>
                     <span class="mt-2 text-amber-400 font-bold text-sm tracking-wider uppercase">BOOM!</span>
@@ -140,16 +140,27 @@
         </button>
     </nav>
 
-    <!-- Modal Alerts & Payment Loaders -->
+    <!-- Payment Loader Modal -->
     <div id="pay-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
-        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center max-w-xs w-full">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center max-w-xs w-full shadow-2xl">
             <div class="w-12 h-12 border-4 border-yellow-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p class="text-sm font-semibold text-slate-200">جاري تجهيز الفاتورة...</p>
         </div>
     </div>
 
+    <!-- Custom Alert Modal -->
+    <div id="alert-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[110] hidden items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center max-w-xs w-full shadow-2xl">
+            <div id="alert-icon" class="text-4xl mb-3">⚠️</div>
+            <h3 id="alert-title" class="font-bold text-lg text-slate-100 mb-2">تنبيه</h3>
+            <p id="alert-message" class="text-xs text-slate-400 mb-5 leading-relaxed">رسالة التنبيه هنا</p>
+            <button onclick="closeAlert()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition">
+                حسناً
+            </button>
+        </div>
+    </div>
+
     <!-- JavaScript Files Loading -->
-    <script src="sounds.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
