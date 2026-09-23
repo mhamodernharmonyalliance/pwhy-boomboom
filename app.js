@@ -2,6 +2,8 @@
    PWhy BoomBoom - Combined Game & Stars JS
    ========================================== */
 
+const WORKER_URL = 'https://mhaapp.workers.dev';
+
 let userData = null;
 let products = [];
 
@@ -76,7 +78,7 @@ async function loadUser() {
     return;
   }
 
-  const res = await fetch('/api/me', {
+  const res = await fetch(`${WORKER_URL}/api/me`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ initData })
@@ -93,7 +95,7 @@ async function loadUser() {
 }
 
 async function loadProducts() {
-  const res = await fetch('/api/products');
+  const res = await fetch(`${WORKER_URL}/api/products`);
   const data = await res.json();
   products = data.products || [];
 }
@@ -133,6 +135,11 @@ function handleTap(x, y) {
   score += pointsPerClick;
   energy -= pointsPerClick;
   updateUI();
+
+  // تشغيل الصوت عند النقر
+  if (window.sounds && typeof window.sounds.tap === 'function') {
+    window.sounds.tap();
+  }
 
   const tg = window.Telegram?.WebApp;
   if (tg?.HapticFeedback) {
@@ -182,13 +189,16 @@ window.buyUpgrade = function(type) {
   if (type === 'tap' && score >= 100) {
     score -= 100;
     pointsPerClick += 1;
+    if (window.sounds && typeof window.sounds.claim === 'function') window.sounds.claim();
     showAlert('🎉', 'نجاح', 'تمت ترقية قوة النقر بنجاح!');
   } else if (type === 'energy' && score >= 200) {
     score -= 200;
     maxEnergy += 500;
     energy += 500;
+    if (window.sounds && typeof window.sounds.claim === 'function') window.sounds.claim();
     showAlert('🎉', 'نجاح', 'تمت ترقية حد الطاقة بنجاح!');
   } else {
+    if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
     showAlert('⚠️', 'تنبيه', 'عذراً، لا تمتلك رصيد كافي من الـ Booms!');
   }
   updateUI();
@@ -291,6 +301,7 @@ async function buyProduct(productId) {
   const initData = tg?.initData;
 
   if (!tg || !tg.openInvoice || !initData) {
+    if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
     showAlert('⚠️', 'تنبيه', t('payNotTg'));
     return;
   }
@@ -299,7 +310,7 @@ async function buyProduct(productId) {
   if (payModal) payModal.classList.add('active');
 
   try {
-    const res = await fetch('/api/create-invoice', {
+    const res = await fetch(`${WORKER_URL}/api/create-invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ productId, initData, lang: getLang() })
@@ -309,6 +320,7 @@ async function buyProduct(productId) {
     if (payModal) payModal.classList.remove('active');
 
     if (!data.url) {
+      if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
       showAlert('❌', 'خطأ', data.error || t('payError'));
       return;
     }
@@ -316,6 +328,7 @@ async function buyProduct(productId) {
     // Open Official Telegram Stars Payment Invoice
     tg.openInvoice(data.url, (status) => {
       if (status === 'paid') {
+        if (window.sounds && typeof window.sounds.claim === 'function') window.sounds.claim();
         if (tg.HapticFeedback) tg.HapticFeedback.notificationOccurred('success');
         showAlert('🎉', 'نجاح', t('paySuccess'));
         
@@ -325,11 +338,13 @@ async function buyProduct(productId) {
 
         setTimeout(() => location.reload(), 2000);
       } else if (status === 'failed') {
+        if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
         showAlert('⚠️', 'إلغاء', t('payFail'));
       }
     });
   } catch (e) {
     if (payModal) payModal.classList.remove('active');
+    if (window.sounds && typeof window.sounds.error === 'function') window.sounds.error();
     showAlert('⚠️', 'خطأ', t('payNetErr'));
   }
 }
