@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>P Why — Boom Boom</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#030712">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Splash -->
+  <div id="splash" class="splash">
+    <div class="spinner"></div>
+    <h3 data-i18n="loading">جاري التحميل...</h3>
+  </div>
+
+  <!-- App -->
+  <div id="app" class="app hidden">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="brand-mark">🪙</div>
+        <div class="brand-text">
+          <div class="brand-name">P Why</div>
+          <div class="brand-tag" data-i18n="since">منذ</div>
+        </div>
+      </div>
+      <button class="icon-btn" onclick="toggleLanguage()">🌐</button>
+    </header>
+
+    <!-- Dream Bar 314 -->
+    <div class="dream-bar">
+      <div class="dream-labels">
+        <span class="dream-real" id="dream-real">$0.0004</span>
+        <span class="dream-soon" id="dream-soon">قريبًا...</span>
+        <span class="dream-target">🎯 <span id="dream-target">314</span></span>
+      </div>
+      <div class="dream-track">
+        <div class="dream-fill" id="dream-fill"></div>
+      </div>
+    </div>
+
+    <!-- Player Card -->
+    <section class="player-card">
+      <div class="chart-bg" id="chart-bg"></div>
+
+      <div class="card-inner">
+        <div class="avatar-wrap">
+          <div class="led-mosaic"></div>
+          <div class="avatar" id="player-emoji">😇</div>
+        </div>
+
+        <div class="player-info">
+          <div class="user-name" id="user-name">—</div>
+          <div class="vitals">
+            <span class="vital-icon">💓</span>
+            <span class="vital-pulse"></span>
+            <span class="vital-label" data-i18n="vitalSigns">المؤشرات الحيوية</span>
+          </div>
+          <div class="level-display" id="level-display">المستوى 1</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-icon">⚡</div>
+          <div class="stat-value">
+            <span id="energy-value">0</span>
+            <span class="stat-sub">/ <span id="energy-max">10</span></span>
+          </div>
+          <div class="stat-label" data-i18n="energy">طاقة</div>
+          <div class="stat-track"><div class="stat-fill" id="energy-fill"></div></div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon">🪙</div>
+          <div class="stat-value" id="coins-value">0</div>
+          <div class="stat-label" data-i18n="coins">عملات</div>
+        </div>
+      </div>
+
+      <!-- Mobile + Claim -->
+      <div class="actions">
+        <button class="action-btn mobile" onclick="doCollectClick()">
+          <span class="action-emoji">📱</span>
+          <span class="action-label" data-i18n="claim">استلام</span>
+        </button>
+        <button class="action-btn claim" onclick="doClaimAction()">
+          <span class="action-emoji">💰</span>
+          <span class="action-label" data-i18n="energy">تحصيل</span>
+        </button>
+      </div>
+
+      <!-- Resources -->
+      <div class="resources" id="resources"></div>
+
+      <!-- Ad Button -->
+      <button id="ad-btn" class="ad-btn" style="display:none"></button>
+
+      <!-- Upgrade -->
+      <button class="upgrade-btn" id="upgrade-btn" onclick="upgradeLevel()">ترقية</button>
+    </section>
+
+    <!-- Log -->
+    <section class="log" id="log"></section>
+  </div>
+
+  <!-- Flash -->
+  <div id="flash" class="flash" onclick="closeFlash()"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
