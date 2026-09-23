@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>P Why — Boom Boom</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#030712">
+  <meta name="theme-color" content="#0f172a">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -15,102 +14,129 @@
   <!-- Splash -->
   <div id="splash" class="splash">
     <div class="spinner"></div>
-    <h3 data-i18n="loading">جاري التحميل...</h3>
+    <div class="splash-text" data-i18n="loading">جاري التحميل...</div>
   </div>
 
   <!-- App -->
   <div id="app" class="app hidden">
 
-    <!-- Header -->
+    <!-- ===== HEADER ===== -->
     <header class="header">
-      <div class="brand">
-        <div class="brand-mark">🪙</div>
-        <div class="brand-text">
-          <div class="brand-name">P Why</div>
-          <div class="brand-tag" data-i18n="since">منذ</div>
+      <div class="h-user">
+        <div class="avatar-mini" id="user-avatar">💣</div>
+        <div class="h-info">
+          <div class="h-name" id="user-name">—</div>
+          <div class="h-level">
+            <span class="bolt">⚡</span>
+            <span data-i18n="level">المستوى</span> <span id="level-num">1</span>
+          </div>
         </div>
       </div>
-      <button class="icon-btn" onclick="toggleLanguage()">🌐</button>
+      <div class="h-right">
+        <button class="icon-btn" id="sound-btn" title="Sound">🔊</button>
+        <button class="icon-btn" onclick="toggleLanguage()">🌐</button>
+        <div class="coins-chip">
+          <span class="coin-icon">🪙</span>
+          <span id="coins-header">0</span>
+        </div>
+      </div>
     </header>
 
-    <!-- Dream Bar 314 -->
+    <!-- ===== DREAM BAR 314 ===== -->
     <div class="dream-bar">
-      <div class="dream-labels">
+      <div class="dream-row">
         <span class="dream-real" id="dream-real">$0.0004</span>
-        <span class="dream-soon" id="dream-soon">قريبًا...</span>
-        <span class="dream-target">🎯 <span id="dream-target">314</span></span>
+        <span class="dream-soon" id="dream-soon" data-i18n="soon">قريبًا...</span>
+        <span class="dream-target">🎯 314</span>
       </div>
       <div class="dream-track">
         <div class="dream-fill" id="dream-fill"></div>
       </div>
     </div>
 
-    <!-- Player Card -->
-    <section class="player-card">
-      <div class="chart-bg" id="chart-bg"></div>
-
-      <div class="card-inner">
-        <div class="avatar-wrap">
-          <div class="led-mosaic"></div>
-          <div class="avatar" id="player-emoji">😇</div>
+    <!-- ===== TAB: GAME ===== -->
+    <main id="tab-game" class="tab active">
+      <!-- Player Card -->
+      <section class="player-card">
+        <div class="led-halo" id="led-halo"></div>
+        <div class="avatar-big" id="player-emoji">😇</div>
+        <div class="vitals">
+          <span class="vital-dot"></span>
+          <span data-i18n="vitalSigns">المؤشرات الحيوية</span>
         </div>
+      </section>
 
-        <div class="player-info">
-          <div class="user-name" id="user-name">—</div>
-          <div class="vitals">
-            <span class="vital-icon">💓</span>
-            <span class="vital-pulse"></span>
-            <span class="vital-label" data-i18n="vitalSigns">المؤشرات الحيوية</span>
-          </div>
-          <div class="level-display" id="level-display">المستوى 1</div>
-        </div>
-      </div>
-
-      <!-- Stats -->
-      <div class="stats">
-        <div class="stat">
-          <div class="stat-icon">⚡</div>
-          <div class="stat-value">
-            <span id="energy-value">0</span>
-            <span class="stat-sub">/ <span id="energy-max">10</span></span>
-          </div>
-          <div class="stat-label" data-i18n="energy">طاقة</div>
-          <div class="stat-track"><div class="stat-fill" id="energy-fill"></div></div>
-        </div>
-        <div class="stat">
-          <div class="stat-icon">🪙</div>
-          <div class="stat-value" id="coins-value">0</div>
-          <div class="stat-label" data-i18n="coins">عملات</div>
+      <!-- Score -->
+      <div class="score-box">
+        <div class="score-label" data-i18n="coins">العملات</div>
+        <div class="score-value">
+          <span id="coins-main">0</span>
         </div>
       </div>
 
-      <!-- Mobile + Claim -->
-      <div class="actions">
-        <button class="action-btn mobile" onclick="doCollectClick()">
-          <span class="action-emoji">📱</span>
-          <span class="action-label" data-i18n="claim">استلام</span>
-        </button>
-        <button class="action-btn claim" onclick="doClaimAction()">
-          <span class="action-emoji">💰</span>
-          <span class="action-label" data-i18n="energy">تحصيل</span>
-        </button>
+      <!-- Tap Button -->
+      <div class="tap-wrap">
+        <div class="tap-btn" id="click-area">
+          <span class="tap-emoji">📱</span>
+          <span class="tap-label" data-i18n="claim">استلام</span>
+        </div>
+      </div>
+
+      <!-- Energy -->
+      <div class="energy-box">
+        <div class="energy-row">
+          <span class="energy-label">⚡ <span data-i18n="energy">طاقة</span></span>
+          <span class="energy-num"><span id="energy-value">0</span> / <span id="energy-max">10</span></span>
+        </div>
+        <div class="energy-track">
+          <div class="energy-fill" id="energy-fill"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ===== TAB: SHOP ===== -->
+    <main id="tab-shop" class="tab">
+      <h2 class="tab-title">📦 <span data-i18n="upgrade">المتجر والتطويرات</span></h2>
+
+      <!-- Levels -->
+      <div class="shop-section">
+        <div class="shop-heading">
+          <span>🏆 <span data-i18n="level">المستويات</span></span>
+        </div>
+        <div id="levels-list" class="levels-list"></div>
       </div>
 
       <!-- Resources -->
-      <div class="resources" id="resources"></div>
+      <div class="shop-section">
+        <div class="shop-heading">
+          <span>💊 <span data-i18n="resources">الموارد النفسية</span></span>
+        </div>
+        <div id="resources-list" class="resources-list"></div>
+      </div>
 
       <!-- Ad Button -->
-      <button id="ad-btn" class="ad-btn" style="display:none"></button>
+      <button id="ad-btn" class="ad-btn" style="display:none">
+        📺 <span data-i18n="watchAd">شاهد إعلان</span>
+      </button>
 
-      <!-- Upgrade -->
-      <button class="upgrade-btn" id="upgrade-btn" onclick="upgradeLevel()">ترقية</button>
-    </section>
+      <!-- Log -->
+      <div class="log" id="log"></div>
+    </main>
 
-    <!-- Log -->
-    <section class="log" id="log"></section>
+    <!-- ===== BOTTOM NAV ===== -->
+    <nav class="nav">
+      <button class="nav-btn active" id="nav-game" onclick="switchTab('game')">
+        <span class="nav-icon">🎮</span>
+        <span class="nav-label" data-i18n="game">اللعبة</span>
+      </button>
+      <button class="nav-btn" id="nav-shop" onclick="switchTab('shop')">
+        <span class="nav-icon">🛒</span>
+        <span class="nav-label" data-i18n="shop">المتجر</span>
+      </button>
+    </nav>
   </div>
 
-  <!-- Flash -->
+  <!-- Flash message -->
   <div id="flash" class="flash" onclick="closeFlash()"></div>
 
   <script type="module" src="app.js"></script>
