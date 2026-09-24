@@ -1,10 +1,12 @@
 /* ==========================================
-   PWhy BoomBoom - Game Logic (v3 - Final)
+   PWhy BoomBoom - Game Logic (v4 - Sound Fix)
    Firebase + Adsgram + Hearts
    ========================================== */
 
 // --- Safe SoundManager fallback ---
-const SM = window.SoundManager || {
+// ✅ التعديل: نستخدم typeof بدل window.SoundManager
+// لأن const في النطاق العام لا تُضاف إلى window تلقائيًا
+const SM = (typeof SoundManager !== 'undefined') ? SoundManager : {
   tap: () => {}, click: () => {}, combo: () => {}, gift: () => {},
   levelUp: () => {}, powerup: () => {}, bigTap: () => {},
   isMuted: () => false, toggle: () => false
