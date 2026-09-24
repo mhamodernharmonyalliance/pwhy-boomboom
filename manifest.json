@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "PWhy BoomBoom",
+  "short_name": "BoomBoom",
+  "description": "Tap the heart, earn Booms 💖",
+  "scope": "/",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#f43f5e",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/pwhy-icon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwhy-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
