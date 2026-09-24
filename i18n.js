@@ -1,139 +1,88 @@
 /* ==========================================
-   PWhy — Internationalization (i18n) System
-   نظام دعم اللغة العربية والإنجليزية
+   PWhy BoomBoom - i18n (EN default, AR alt)
    ========================================== */
 
-const I18N_DATA = {
+const I18N = {
   en: {
-    loading: "Loading...",
-    purchaseHistory: "Purchase History",
-    openingInvoice: "Opening invoice...",
-    close: "Close",
-    guest: "PWhy Player",
-    credits: "Booms",
-    noPurchases: "No purchases yet",
-    payNotTg: "⚠️ Payment is only available inside Telegram",
-    paySuccess: "🎉 Thank you! Purchase applied.",
-    payFail: "⚠️ Payment failed. Try again.",
-    payError: "❌ Failed to create invoice",
-    payNetErr: "⚠️ Connection error",
-    priceLabel: "⭐ Stars",
-    gameTitle: "Total Booms",
-    energyLabel: "Energy",
-    levelLabel: "Level 1",
-    upgradesTitle: "Upgrades & Boosts",
-    starsStoreTitle: "Telegram Stars Store",
-    tapUpgradeTitle: "Tap Power (+1)",
-    tapUpgradeCost: "Cost: 100 💣",
-    energyUpgradeTitle: "Energy Limit (+500)",
-    energyUpgradeCost: "Cost: 200 💣",
-    navGame: "Game",
-    navShop: "Shop",
-    navTasks: "Tasks",
-    langBtn: "العربية",
-    joinChannel: "Join Official Channel",
-    claimReward: "Claim 1,000 💣"
+    splashTitle: "Loading PWhy BoomBoom... 💖",
+    splashSub: "Preparing hearts",
+    level: "Level",
+    scoreLabel: "Total Booms",
+    energy: "Energy",
+    watchAd: "Watch Ad → +1000 Hearts",
+    adWait: "⏳ Wait",
+    adBefore: "before a new ad.",
+    adNoAds: "⚠️ No ads available. Try later.",
+    adError: "⚠️ Error. Try again.",
+    adBoost: "🎬 +1000 Hearts added!",
+    tutTitle: "Welcome to PWhy BoomBoom!",
+    tutSub: "Quick start guide",
+    tutStep1: "Tap the heart to earn Booms.",
+    tutStep2: "Watch your energy — it regenerates.",
+    tutStep3: "Watch ads for +1000 hearts.",
+    tutStart: "🚀 Let's go!",
+    ok: "OK",
+    boost: "BOOST ×2",
+    x2Boost: "🔥 x2 Boost",
+    offlineScoreKept: "Offline mode"
   },
   ar: {
-    loading: "جاري التحميل...",
-    purchaseHistory: "سجل المشتريات",
-    openingInvoice: "جاري فتح الفاتورة...",
-    close: "إغلاق",
-    guest: "لاعب PWhy",
-    credits: "نقطة",
-    noPurchases: "لا توجد مشتريات بعد",
-    payNotTg: "⚠️ الدفع متاح فقط داخل Telegram",
-    paySuccess: "🎉 شكراً لك! تم تطبيق الشراء بنجاح.",
-    payFail: "⚠️ فشل الدفع. حاول مرة أخرى.",
-    payError: "❌ فشل إنشاء الفاتورة",
-    payNetErr: "⚠️ خطأ في الاتصال بالشبكة",
-    priceLabel: "⭐ نجمة",
-    gameTitle: "إجمالي الـ Booms",
-    energyLabel: "الطاقة",
-    levelLabel: "المستوى 1",
-    upgradesTitle: "التطويرات بالنقاط",
-    starsStoreTitle: "متجر النجوم (Telegram Stars)",
-    tapUpgradeTitle: "قوة النقر (Multitap)",
-    tapUpgradeCost: "السعر: 100 💣",
-    energyUpgradeTitle: "حد الطاقة (Energy Limit)",
-    energyUpgradeCost: "السعر: 200 💣",
-    navGame: "اللعبة",
-    navShop: "المتجر",
-    navTasks: "المهام",
-    langBtn: "English",
-    joinChannel: "انضم للقناة الرسمية",
-    claimReward: "احصل على 1,000 💣"
+    splashTitle: "جاري تحميل PWhy BoomBoom... 💖",
+    splashSub: "تجهيز القلوب",
+    level: "مستوى",
+    scoreLabel: "إجمالي الـ Booms",
+    energy: "الطاقة",
+    watchAd: "شاهد إعلان → +1000 قلب",
+    adWait: "⏳ انتظر",
+    adBefore: "قبل إعلان جديد.",
+    adNoAds: "⚠️ لا توجد إعلانات متاحة. جرب لاحقاً.",
+    adError: "⚠️ خطأ. جرب مرة أخرى.",
+    adBoost: "🎬 +1000 قلب!",
+    tutTitle: "مرحباً في PWhy BoomBoom!",
+    tutSub: "دليل سريع للبدء",
+    tutStep1: "اضغط على القلب لتكسب Booms.",
+    tutStep2: "انتبه لطاقتك — تتجدد تلقائياً.",
+    tutStep3: "شاهد الإعلانات مقابل +1000 قلب.",
+    tutStart: "🚀 هيا نبدأ!",
+    ok: "حسناً",
+    boost: "تعزيز ×2",
+    x2Boost: "🔥 مضاعف ×2",
+    offlineScoreKept: "وضع غير متصل"
   }
 };
 
-// تحديد اللغة الافتراضية
-let currentLang = localStorage.getItem('lang') || 
-  (window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code === 'ar' ? 'ar' : 'en');
+let currentLang = localStorage.getItem('pwhy_lang') || 'en';
 
-/**
- * دالة جلب النص المترجم بناءً على المفتاح
- */
-export function t(key) {
-  const dict = I18N_DATA[currentLang] || I18N_DATA.en;
-  return dict[key] || I18N_DATA.en[key] || key;
+function t(key) {
+  const dict = I18N[currentLang] || I18N.en;
+  return dict[key] || I18N.en[key] || key;
 }
 
-/**
- * معرفة اللغة الحالية
- */
-export function getLang() { 
-  return currentLang; 
-}
+function getLang() { return currentLang; }
 
-/**
- * تطبيق الترجمة على كل العناصر التي تحمل خاصية data-i18n
- */
-export function applyTranslations() {
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (key) {
-      el.textContent = t(key);
-    }
-  });
-
-  // تحديث نص زر التغيير تلقائياً إن وجد
-  const langBtn = document.getElementById('lang-btn');
-  if (langBtn) {
-    langBtn.textContent = t('langBtn');
-  }
-}
-
-/**
- * تغيير اللغة وتطبيقها على الصفحة
- */
-export function setLanguage(lang) {
-  if (!I18N_DATA[lang]) lang = 'en';
+function setLanguage(lang) {
+  if (!I18N[lang]) lang = 'en';
   currentLang = lang;
-  localStorage.setItem('lang', lang);
-  
+  localStorage.setItem('pwhy_lang', lang);
   document.documentElement.lang = lang;
   document.documentElement.dir = (lang === 'ar') ? 'rtl' : 'ltr';
-  
   applyTranslations();
-  window.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang } }));
 }
 
-/**
- * التبديل بين العربية والإنجليزية
- */
-export function toggleLanguage() {
+function toggleLanguage() {
   setLanguage(currentLang === 'en' ? 'ar' : 'en');
+  SoundManager.click();
 }
 
-// جعل الدوال متاحة على مستوى window لسهولة الوصول المباشر
-if (typeof window !== 'undefined') {
-  window.I18N = { t, getLang, setLanguage, toggleLanguage, applyTranslations };
-  
-  document.addEventListener('DOMContentLoaded', () => {
-    document.documentElement.lang = currentLang;
-    document.documentElement.dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
-    applyTranslations();
+function applyTranslations() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    el.textContent = t(key);
   });
 }
 
-export default { t, getLang, setLanguage, toggleLanguage, applyTranslations };
+document.addEventListener('DOMContentLoaded', () => {
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = (currentLang === 'ar') ? 'rtl' : 'ltr';
+  applyTranslations();
+});
