@@ -1,20 +1,39 @@
 /* ==========================================
-   PWhy BoomBoom - Game Logic
+   PWhy BoomBoom - Game Logic (v3 - Final)
    Firebase + Adsgram + Hearts
    ========================================== */
 
-// --- Firebase ---
-const firebaseConfig = {
-  apiKey: "AIzaSyBJTd25x7MKfcQVzAH7ZNNaAwUjXs_-CoI",
-  authDomain: "mhaexplorer-ac7a7.firebaseapp.com",
-  databaseURL: "https://mhaexplorer-ac7a7-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "mhaexplorer-ac7a7",
-  storageBucket: "mhaexplorer-ac7a7.appspot.com",
-  messagingSenderId: "692744600959",
-  appId: "1:692744600959:web:7feb3b2f9f24c21fe22e4a"
+// --- Safe SoundManager fallback ---
+const SM = window.SoundManager || {
+  tap: () => {}, click: () => {}, combo: () => {}, gift: () => {},
+  levelUp: () => {}, powerup: () => {}, bigTap: () => {},
+  isMuted: () => false, toggle: () => false
 };
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+
+// --- Firebase Config (Project: pwhy-boomboom) ---
+const firebaseConfig = {
+  apiKey: "AIzaSyDsGk5Ufb-tVkxxfTcyqDKLiewik-DcH8o",
+  authDomain: "pwhy-boomboom.firebaseapp.com",
+  databaseURL: "https://pwhy-boomboom-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "pwhy-boomboom",
+  storageBucket: "pwhy-boomboom.firebasestorage.app",
+  messagingSenderId: "107228338807",
+  appId: "1:107228338807:web:f01becdb45cac930fda532"
+};
+
+// --- Firebase Init (Protected) ---
+let db = null;
+try {
+  if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    console.log('✅ Firebase initialized');
+  } else {
+    console.error('❌ Firebase SDK not loaded');
+  }
+} catch (e) {
+  console.error('❌ Firebase init error:', e);
+}
 
 // --- Constants ---
 const ENERGY_REGEN_PER_SEC = 3;
@@ -24,6 +43,7 @@ const AD_BOOST_DURATION_MS = 60 * 1000;
 const AD_BOOST_MULTIPLIER = 2;
 const COMBO_WINDOW_MS = 1500;
 const SAVE_THROTTLE_MS = 5000;
+const FIREBASE_TIMEOUT_MS = 6000;
 
 // --- State ---
 let score = 0;
@@ -50,19 +70,22 @@ let tutorialKey = 'pwhy_tutorial_done';
   } catch (e) {}
 })();
 
-// --- Adsgram ---
+// --- Adsgram (called from index.html after script loads) ---
 let AdController = null;
 let adsgramReady = false;
-function initAdsgram() {
+window.initAdsgram = function() {
   if (typeof window.Adsgram === 'undefined') return false;
   try {
     // ⚠️ ضع Block ID الخاص بـ Adsgram لمشروع PWhy
     AdController = window.Adsgram.init({ blockId: "49527" });
     adsgramReady = true;
+    console.log('✅ Adsgram ready');
     return true;
-  } catch (e) { return false; }
-}
-setTimeout(initAdsgram, 2000);
+  } catch (e) {
+    console.warn('⚠️ Adsgram init failed:', e);
+    return false;
+  }
+};
 
 // --- User ---
 function getUserId() {
@@ -93,7 +116,7 @@ function scheduleSave() {
 }
 
 function saveToFirebase() {
-  if (!isDataLoaded) return;
+  if (!isDataLoaded || !db) return;
   const userId = getUserId();
   if (!userId) return;
   lastSaveTime = Date.now();
@@ -107,8 +130,28 @@ function saveToFirebase() {
 // --- Load ---
 async function loadUserData() {
   const userId = getUserId();
+
+  // Offline fallback if Firebase is not available
+  if (!db) {
+    console.warn('⚠️ No Firebase — running in offline mode');
+    const cached = parseInt(localStorage.getItem('pwhy_offline_score') || '0');
+    if (cached > 0) score = cached;
+    isDataLoaded = true;
+    hideSplash();
+    updateUI();
+    startEnergyRegen();
+    maybeShowTutorial();
+    return;
+  }
+
   try {
-    const snap = await db.ref('boomboom_players/' + userId).once('value');
+    const snap = await Promise.race([
+      db.ref('boomboom_players/' + userId).once('value'),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Firebase timeout')), FIREBASE_TIMEOUT_MS)
+      )
+    ]);
+
     const data = snap.val();
     if (data) {
       score = typeof data.score === 'number' ? data.score : 0;
@@ -116,14 +159,16 @@ async function loadUserData() {
       maxEnergy = typeof data.maxEnergy === 'number' ? data.maxEnergy : 1000;
       pointsPerTap = typeof data.pointsPerTap === 'number' ? data.pointsPerTap : 1;
       lastAdWatchTime = data.lastAdWatchTime || 0;
+      console.log('✅ User data loaded:', data);
     } else {
-      // New user
       await db.ref('boomboom_players/' + userId).set({
         score: 0, energy: 1000, maxEnergy: 1000, pointsPerTap: 1,
         name: getUserName(), joinedAt: Date.now(), lastActive: Date.now(),
         adCount: 0, heartsPopped: 0
       });
+      console.log('✅ New user created');
     }
+
     isDataLoaded = true;
     hideSplash();
     updateUI();
@@ -131,13 +176,14 @@ async function loadUserData() {
     startEnergyRegen();
     maybeShowTutorial();
   } catch (e) {
-    console.error(e);
+    console.error('❌ loadUserData failed:', e);
     const cached = parseInt(localStorage.getItem('pwhy_offline_score') || '0');
     if (cached > 0) score = cached;
     isDataLoaded = true;
     hideSplash();
     updateUI();
     startEnergyRegen();
+    maybeShowTutorial();
   }
 }
 
@@ -159,7 +205,6 @@ function updateUI() {
   if (maxEnergyEl) maxEnergyEl.textContent = maxEnergy;
   if (fillEl) fillEl.style.width = ((energy / maxEnergy) * 100) + '%';
 
-  // Boosts
   const bar = document.getElementById('boosts-bar');
   if (bar) {
     const now = Date.now();
@@ -171,7 +216,6 @@ function updateUI() {
     bar.innerHTML = html;
   }
 
-  // User avatar
   const u = window.Telegram?.WebApp?.initDataUnsafe?.user;
   if (u) {
     const avatar = document.getElementById('user-avatar');
@@ -193,8 +237,10 @@ function startEnergyRegen() {
 
 // --- Tap Handler ---
 function handleTap(x, y) {
+  console.log('👆 Tap at', x, y, 'energy=', energy);
+
   if (energy < pointsPerTap) {
-    SoundManager.click();
+    SM.click();
     return;
   }
 
@@ -206,18 +252,16 @@ function handleTap(x, y) {
   }
   lastTapTime = now;
 
-  // Combo bonuses
   let comboMultiplier = 1;
   if (comboCount >= 20) comboMultiplier = 3;
   else if (comboCount >= 10) comboMultiplier = 2;
   else if (comboCount >= 5) comboMultiplier = 1.5;
 
   if (comboCount === 5 || comboCount === 10 || comboCount === 20) {
-    SoundManager.combo(comboCount);
+    SM.combo(comboCount);
     showCombo(comboCount, comboMultiplier);
   }
 
-  // Effective multiplier (ads + combo)
   let eff = comboMultiplier;
   if (tempMultiplier > 1 && now < tempBoostExpiry) eff *= tempMultiplier;
 
@@ -225,12 +269,11 @@ function handleTap(x, y) {
   score += gain;
   energy -= pointsPerTap;
 
-  SoundManager.tap();
+  SM.tap();
   if (window.Telegram?.WebApp?.HapticFeedback) {
     window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
   }
 
-  // Visual effects
   spawnFloatingHeart(x, y, '+' + gain);
   spawnBurstHearts(x, y);
   pulseHeart();
@@ -281,23 +324,32 @@ function showCombo(n, m) {
   setTimeout(() => el.remove(), 600);
 }
 
-// --- Heart stage events ---
-const heartStage = document.getElementById('heart-stage');
-if (heartStage) {
-  heartStage.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    for (let i = 0; i < e.touches.length; i++) {
-      handleTap(e.touches[i].clientX, e.touches[i].clientY);
+// --- Heart stage events (pointerdown only) ---
+(function initHeartStage() {
+  const heartStage = document.getElementById('heart-stage');
+  if (!heartStage) {
+    console.error('❌ #heart-stage not found');
+    return;
+  }
+  let lastTouchTime = 0;
+  heartStage.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') {
+      lastTouchTime = Date.now();
+      handleTap(e.clientX, e.clientY);
+    } else if (e.pointerType === 'mouse') {
+      // تجاهل نقر الماوس المزدوج بعد لمسة على الأجهزة الهجينة
+      if (Date.now() - lastTouchTime > 500) {
+        handleTap(e.clientX, e.clientY);
+      }
     }
-  }, { passive: false });
-
-  heartStage.addEventListener('click', (e) => {
-    handleTap(e.clientX, e.clientY);
   });
-}
+  console.log('✅ Heart stage ready');
+})();
 
 // --- Adsgram Ad ---
 async function watchAd() {
+  console.log('🎬 watchAd called', { adsgramReady, AdController: !!AdController });
+
   const now = Date.now();
   if (now - lastAdWatchTime < AD_COOLDOWN_MS) {
     const r = AD_COOLDOWN_MS - (now - lastAdWatchTime);
@@ -317,16 +369,17 @@ async function watchAd() {
 
     await AdController.show();
 
-    // Success
     lastAdWatchTime = Date.now();
     localStorage.setItem('pwhy_last_ad', lastAdWatchTime.toString());
-    db.ref('boomboom_players/' + getUserId()).update({ lastAdWatchTime });
+    if (db) {
+      db.ref('boomboom_players/' + getUserId()).update({ lastAdWatchTime }).catch(() => {});
+    }
 
     energy += AD_REWARD_HEARTS;
     tempMultiplier = AD_BOOST_MULTIPLIER;
     tempBoostExpiry = Date.now() + AD_BOOST_DURATION_MS;
 
-    SoundManager.gift();
+    SM.gift();
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
     }
@@ -366,31 +419,40 @@ function startAdCooldownTicker() {
 
 // --- Alerts ---
 function showAlert(icon, title, message) {
-  document.getElementById('alert-icon').textContent = icon;
-  document.getElementById('alert-title').textContent = title;
-  document.getElementById('alert-message').textContent = message;
-  document.getElementById('alert-modal').classList.add('active');
+  const iconEl = document.getElementById('alert-icon');
+  const titleEl = document.getElementById('alert-title');
+  const msgEl = document.getElementById('alert-message');
+  const modal = document.getElementById('alert-modal');
+  if (iconEl) iconEl.textContent = icon;
+  if (titleEl) titleEl.textContent = title;
+  if (msgEl) msgEl.textContent = message;
+  if (modal) modal.classList.add('active');
 }
 function closeAlert() {
-  document.getElementById('alert-modal').classList.remove('active');
-  SoundManager.click();
+  const modal = document.getElementById('alert-modal');
+  if (modal) modal.classList.remove('active');
+  SM.click();
 }
 
 // --- Tutorial ---
 function maybeShowTutorial() {
   if (!localStorage.getItem(tutorialKey)) {
-    setTimeout(() => document.getElementById('tut-modal').classList.add('active'), 700);
+    setTimeout(() => {
+      const m = document.getElementById('tut-modal');
+      if (m) m.classList.add('active');
+    }, 700);
   }
 }
 function closeTutorial() {
   localStorage.setItem(tutorialKey, '1');
-  document.getElementById('tut-modal').classList.remove('active');
-  SoundManager.click();
+  const m = document.getElementById('tut-modal');
+  if (m) m.classList.remove('active');
+  SM.click();
 }
 
 // --- Mute ---
 function toggleMute() {
-  const muted = SoundManager.toggle();
+  const muted = SM.toggle();
   const btn = document.getElementById('mute-btn');
   if (btn) btn.textContent = muted ? '🔇' : '🔊';
 }
@@ -398,29 +460,15 @@ function toggleMute() {
 // --- Init mute state ---
 (function initMute() {
   const btn = document.getElementById('mute-btn');
-  if (btn && SoundManager.isMuted()) btn.textContent = '🔇';
+  if (btn && SM.isMuted && SM.isMuted()) btn.textContent = '🔇';
 })();
 
 // --- Save on unload ---
 window.addEventListener('beforeunload', saveToFirebase);
+window.addEventListener('pagehide', saveToFirebase);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) saveToFirebase();
 });
 
-// --- Load ---
+// --- Load (single call) ---
 loadUserData();
-// --- Load ---
-loadUserData();
-
-// ⏰ مؤقت أمان: اخفِ splash بعد 6 ثوان بغض النظر عن Firebase
-setTimeout(() => {
-  const s = document.getElementById('splash');
-  if (s && !s.classList.contains('hide')) {
-    console.warn('⚠️ Splash timeout — forcing hide (Firebase may have failed)');
-    s.classList.add('hide');
-    setTimeout(() => s?.remove(), 500);
-  }
-}, 6000);
-
-// 🔒 عند الخروج من اللعبة، احفظ
-window.addEventListener('pagehide', saveToFirebase);
