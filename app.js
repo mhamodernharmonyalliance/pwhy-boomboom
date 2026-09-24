@@ -57,7 +57,7 @@ function initAdsgram() {
   if (typeof window.Adsgram === 'undefined') return false;
   try {
     // ⚠️ ضع Block ID الخاص بـ Adsgram لمشروع PWhy
-    AdController = window.Adsgram.init({ blockId: "YOUR_PWHY_BLOCK_ID" });
+    AdController = window.Adsgram.init({ blockId: "49527" });
     adsgramReady = true;
     return true;
   } catch (e) { return false; }
