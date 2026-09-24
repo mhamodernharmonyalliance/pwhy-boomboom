@@ -1,5 +1,6 @@
 /* ==========================================
    Sound Manager - Web Audio API
+   PWhy BoomBoom
    ========================================== */
 const SoundManager = (() => {
   let ctx = null;
@@ -7,25 +8,40 @@ const SoundManager = (() => {
 
   function init() {
     if (ctx) return;
-    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    try {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {
+      console.warn('⚠️ AudioContext failed:', e);
+      ctx = null;
+    }
   }
 
   function play(freq, duration = 0.1, type = 'sine', vol = 0.15, delay = 0) {
     if (muted) return;
     init();
     if (!ctx) return;
-    if (ctx.state === 'suspended') ctx.resume();
-    const t0 = ctx.currentTime + delay;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(vol, t0);
-    gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(t0);
-    osc.stop(t0 + duration);
+    try {
+      // المتصفحات توقف AudioContext حتى أول تفاعل من المستخدم
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const t0 = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = type;
+      osc.frequency.value = freq;
+
+      gain.gain.setValueAtTime(vol, t0);
+      gain.gain.exponentialRampToValueAtTime(0.001, t0 + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(t0);
+      osc.stop(t0 + duration);
+    } catch (e) {
+      console.warn('⚠️ play failed:', e);
+    }
   }
 
   return {
@@ -45,3 +61,6 @@ const SoundManager = (() => {
     }
   };
 })();
+
+// ✅ اجعلها متاحة عالميًا (بدون هذا السطر، app.js لن يجدها)
+window.SoundManager = SoundManager;
