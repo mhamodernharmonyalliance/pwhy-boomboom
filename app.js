@@ -409,3 +409,18 @@ document.addEventListener('visibilitychange', () => {
 
 // --- Load ---
 loadUserData();
+// --- Load ---
+loadUserData();
+
+// ⏰ مؤقت أمان: اخفِ splash بعد 6 ثوان بغض النظر عن Firebase
+setTimeout(() => {
+  const s = document.getElementById('splash');
+  if (s && !s.classList.contains('hide')) {
+    console.warn('⚠️ Splash timeout — forcing hide (Firebase may have failed)');
+    s.classList.add('hide');
+    setTimeout(() => s?.remove(), 500);
+  }
+}, 6000);
+
+// 🔒 عند الخروج من اللعبة، احفظ
+window.addEventListener('pagehide', saveToFirebase);
