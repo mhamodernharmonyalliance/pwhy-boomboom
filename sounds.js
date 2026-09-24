@@ -1,28 +1,54 @@
 /* ==========================================
-   Sound Manager - Web Audio API
+   Sound Manager - Web Audio API (v2)
    PWhy BoomBoom
    ========================================== */
 const SoundManager = (() => {
   let ctx = null;
   let muted = localStorage.getItem('pwhy_muted') === '1';
+  let unlocked = false;
 
   function init() {
     if (ctx) return;
     try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { console.warn('⚠️ Web Audio API not supported'); return; }
+      ctx = new AC();
+      console.log('🔊 AudioContext created, state =', ctx.state);
     } catch (e) {
       console.warn('⚠️ AudioContext failed:', e);
       ctx = null;
     }
   }
 
-  function play(freq, duration = 0.1, type = 'sine', vol = 0.15, delay = 0) {
+  // ✅ فتح الصوت على أول تفاعل من المستخدم (مهم جدًا للموبايل)
+  function unlock() {
+    if (unlocked) return;
+    init();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().then(() => {
+        unlocked = true;
+        console.log('🔊 AudioContext unlocked');
+      }).catch(e => console.warn('resume failed:', e));
+    } else {
+      unlocked = true;
+    }
+  }
+
+  // ✅ ربط الفتح بأي تفاعل: لمس، نقر، ضغط مفتاح
+  ['pointerdown', 'touchstart', 'mousedown', 'keydown'].forEach(evt => {
+    document.addEventListener(evt, unlock, { once: false, passive: true });
+  });
+
+  async function play(freq, duration = 0.1, type = 'sine', vol = 0.15, delay = 0) {
     if (muted) return;
     init();
     if (!ctx) return;
     try {
-      // المتصفحات توقف AudioContext حتى أول تفاعل من المستخدم
-      if (ctx.state === 'suspended') ctx.resume();
+      // ✅ انتظر استئناف السياق قبل التشغيل
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
 
       const t0 = ctx.currentTime + delay;
       const osc = ctx.createOscillator();
@@ -56,11 +82,18 @@ const SoundManager = (() => {
     toggle:  () => {
       muted = !muted;
       localStorage.setItem('pwhy_muted', muted ? '1' : '0');
-      if (!muted) play(880, 0.1, 'sine', 0.1);
+      if (!muted) { unlock(); play(880, 0.1, 'sine', 0.1); }
       return muted;
-    }
+    },
+    // للتشخيص
+    _debug: () => ({ ctx: !!ctx, state: ctx?.state, muted, unlocked })
   };
 })();
 
-// ✅ اجعلها متاحة عالميًا (بدون هذا السطر، app.js لن يجدها)
+// ✅ اجعلها متاحة عالميًا
 window.SoundManager = SoundManager;
+
+// ✅ حماية صارمة: احذف أي حالة كتم قديمة بالخطأ
+if (localStorage.getItem('pwhy_muted') === '1') {
+  console.log('🔇 Sound is currently MUTED (stored in localStorage)');
+}
