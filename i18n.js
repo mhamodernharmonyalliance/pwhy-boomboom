@@ -19,12 +19,15 @@ const I18N = {
     tutSub: "Quick start guide",
     tutStep1: "Tap the heart to earn Booms.",
     tutStep2: "Watch your energy — it regenerates.",
-    tutStep3: "Watch ads for +1000 hearts.",
+    tutStep3: "Watch ads for bonus energy and PWhy.",
+    tutStep4: "Climb 5 tiers — earn up to ×3 multiplier at Diamond!",
     tutStart: "🚀 Let's go!",
     ok: "OK",
     boost: "BOOST ×2",
     x2Boost: "🔥 x2 Boost",
-    offlineScoreKept: "Offline mode"
+    offlineScoreKept: "Offline mode",
+    starShopTitle: "PWhy Shop",
+    starShopSub: "Buy PWhy coins with Telegram Stars"
   },
   ar: {
     splashTitle: "جاري تحميل PWhy BoomBoom... 💖",
@@ -42,12 +45,15 @@ const I18N = {
     tutSub: "دليل سريع للبدء",
     tutStep1: "اضغط على القلب لتكسب Booms.",
     tutStep2: "انتبه لطاقتك — تتجدد تلقائياً.",
-    tutStep3: "شاهد الإعلانات مقابل +1000 قلب.",
+    tutStep3: "شاهد الإعلانات للحصول على طاقة ونقاط إضافية.",
+    tutStep4: "اصعد عبر 5 مستويات — حتى ×3 مضاعف في المستوى الماسي!",
     tutStart: "🚀 هيا نبدأ!",
     ok: "حسناً",
     boost: "تعزيز ×2",
     x2Boost: "🔥 مضاعف ×2",
-    offlineScoreKept: "وضع غير متصل"
+    offlineScoreKept: "وضع غير متصل",
+    starShopTitle: "متجر PWhy",
+    starShopSub: "اشترِ عملات PWhy بنجوم تليجرام"
   }
 };
 
@@ -71,7 +77,6 @@ function setLanguage(lang) {
 
 function toggleLanguage() {
   setLanguage(currentLang === 'en' ? 'ar' : 'en');
-  SoundManager.click();
 }
 
 function applyTranslations() {
