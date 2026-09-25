@@ -98,7 +98,7 @@ let adsgramReady = false;
 window.initAdsgram = function() {
   if (typeof window.Adsgram === 'undefined') return false;
   try {
-    AdController = window.Adsgram.init({ blockId: "49527" });
+    AdController = window.Adsgram.init({ blockId: "0" });
     adsgramReady = true;
     console.log('✅ Adsgram ready');
     return true;
