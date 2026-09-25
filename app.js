@@ -1,14 +1,7 @@
 /* ==========================================
-   PWhy BoomBoom - Game Logic (v5 - Levels + Stars)
-   Firebase + Adsgram + Hearts + Levels + Telegram Stars
+   PWhy BoomBoom - Game Logic (v6 - Adexium + No Sound)
+   Firebase + Adexium + Hearts + Levels + Telegram Stars
    ========================================== */
-
-// --- Safe SoundManager fallback ---
-const SM = (typeof SoundManager !== 'undefined') ? SoundManager : {
-  tap: () => {}, click: () => {}, combo: () => {}, gift: () => {},
-  levelUp: () => {}, powerup: () => {}, bigTap: () => {},
-  isMuted: () => false, toggle: () => false
-};
 
 // --- Firebase Config ---
 const firebaseConfig = {
@@ -37,11 +30,11 @@ try {
 
 // --- Levels System ---
 const LEVELS = [
-  { id: 'preliminary', ar: 'تمهيدي', en: 'Preliminary', min: 0,     color: '#f43f5e', glow: 'rgba(244,63,94,0.7)',  emoji: '💖', bonus: 1.0 },
-  { id: 'bronze',      ar: 'برونزي', en: 'Bronze',      min: 20000, color: '#cd7f32', glow: 'rgba(205,127,50,0.7)', emoji: '🧡', bonus: 1.25 },
-  { id: 'silver',      ar: 'فضي',    en: 'Silver',      min: 40000, color: '#e5e7eb', glow: 'rgba(229,231,235,0.7)', emoji: '🤍', bonus: 1.5 },
-  { id: 'gold',        ar: 'ذهبي',   en: 'Gold',        min: 60000, color: '#ffd700', glow: 'rgba(255,215,0,0.8)',  emoji: '💛', bonus: 2.0 },
-  { id: 'diamond',     ar: 'ماسي',   en: 'Diamond',     min: 80000, color: '#67e8f9', glow: 'rgba(103,232,249,0.85)', emoji: '💙', bonus: 3.0 }
+  { id: 'preliminary', ar: 'تمهيدي', en: 'Preliminary', min: 0,       color: '#f43f5e', glow: 'rgba(244,63,94,0.7)',     emoji: '💖', bonus: 1.0 },
+  { id: 'bronze',      ar: 'برونزي', en: 'Bronze',      min: 40000,   color: '#cd7f32', glow: 'rgba(205,127,50,0.7)',   emoji: '🧡', bonus: 1.25 },
+  { id: 'silver',      ar: 'فضي',    en: 'Silver',      min: 80000,   color: '#e5e7eb', glow: 'rgba(229,231,235,0.7)',  emoji: '🤍', bonus: 1.5 },
+  { id: 'gold',        ar: 'ذهبي',   en: 'Gold',        min: 120000,  color: '#ffd700', glow: 'rgba(255,215,0,0.8)',    emoji: '💛', bonus: 2.0 },
+  { id: 'diamond',     ar: 'ماسي',   en: 'Diamond',     min: 200000,  color: '#67e8f9', glow: 'rgba(103,232,249,0.85)', emoji: '💙', bonus: 3.0 }
 ];
 
 function getLevel(pts) {
@@ -92,21 +85,32 @@ let currentLevelId = null;
   try { tg.ready(); tg.expand(); } catch (e) {}
 })();
 
-// --- Adsgram ---
-let AdController = null;
-let adsgramReady = false;
-window.initAdsgram = function() {
-  if (typeof window.Adsgram === 'undefined') return false;
+// --- Adexium ---
+let adexiumWidget = null;
+let adexiumReady = false;
+window.initAdexium = function() {
+  if (typeof window.AdexiumWidget === 'undefined') {
+    console.warn('⚠️ Adexium SDK not loaded');
+    return false;
+  }
   try {
-    AdController = window.Adsgram.init({ blockId: "0" });
-    adsgramReady = true;
-    console.log('✅ Adsgram ready');
+    adexiumWidget = new window.AdexiumWidget({
+      wid: '24836029-ffe3-4180-9147-172304539303',
+      adFormat: 'interstitial'
+    });
+    adexiumReady = true;
+    console.log('✅ Adexium widget ready');
     return true;
   } catch (e) {
-    console.warn('⚠️ Adsgram init failed:', e);
+    console.warn('⚠️ Adexium init failed:', e);
     return false;
   }
 };
+
+// حاول تهيئة Adexium بعد تحميل SDK
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => { window.initAdexium(); }, 1500);
+});
 
 // --- User ---
 function getUserId() {
@@ -233,29 +237,24 @@ function updateUI() {
 // --- Level UI ---
 function updateLevelUI() {
   const lvl = getLevel(score);
-  const idx = getLevelIndex(score);
   const next = getNextLevel(score);
 
   const root = document.documentElement;
   root.style.setProperty('--heart-color', lvl.color);
   root.style.setProperty('--heart-glow', lvl.glow);
 
-  // قلب رئيسي
   const heartMain = document.getElementById('heart-main');
   if (heartMain) heartMain.textContent = lvl.emoji;
 
-  // قلب في لوحة النقاط
   const scoreHeart = document.getElementById('score-heart');
   if (scoreHeart) scoreHeart.textContent = lvl.emoji;
 
-  // اسم المستوى
   const levelNum = document.getElementById('user-level-num');
   if (levelNum) {
     levelNum.textContent = `${lvl.emoji} ${currentLang === 'ar' ? lvl.ar : lvl.en}`;
     levelNum.style.color = lvl.color;
   }
 
-  // شريط التقدم
   const fill = document.getElementById('level-fill');
   const label = document.getElementById('level-label');
   if (fill && label) {
@@ -272,7 +271,6 @@ function updateLevelUI() {
     }
   }
 
-  // ترقية؟
   if (currentLevelId && currentLevelId !== lvl.id) {
     onLevelUp(lvl);
   }
@@ -281,7 +279,6 @@ function updateLevelUI() {
 
 function onLevelUp(lvl) {
   console.log('🎉 Level Up:', lvl.id);
-  if (SM.levelUp) SM.levelUp();
 
   document.body.style.transition = 'background 0.8s';
   document.body.style.background = `radial-gradient(circle at center, ${lvl.glow} 0%, #0f172a 70%)`;
@@ -310,7 +307,7 @@ function startEnergyRegen() {
 
 // --- Tap ---
 function handleTap(x, y) {
-  if (energy < pointsPerTap) { SM.click(); return; }
+  if (energy < pointsPerTap) return;
 
   const now = Date.now();
   if (now - lastTapTime < COMBO_WINDOW_MS) comboCount++;
@@ -323,7 +320,6 @@ function handleTap(x, y) {
   else if (comboCount >= 5) comboMultiplier = 1.5;
 
   if (comboCount === 5 || comboCount === 10 || comboCount === 20) {
-    SM.combo(comboCount);
     showCombo(comboCount, comboMultiplier);
   }
 
@@ -335,7 +331,6 @@ function handleTap(x, y) {
   score += gain;
   energy -= pointsPerTap;
 
-  SM.tap();
   if (window.Telegram?.WebApp?.HapticFeedback) {
     window.Telegram.WebApp.HapticFeedback.impactOccurred('light');
   }
@@ -406,7 +401,7 @@ function showCombo(n, m) {
   console.log('✅ Heart stage ready');
 })();
 
-// --- Adsgram Ad ---
+// --- Ad (Adexium) ---
 async function watchAd() {
   const now = Date.now();
   if (now - lastAdWatchTime < AD_COOLDOWN_MS) {
@@ -420,30 +415,41 @@ async function watchAd() {
   if (btn) btn.disabled = true;
 
   try {
-    if (!adsgramReady || !AdController) {
+    if (!adexiumReady || !adexiumWidget) {
       showAlert('⚠️', 'Ad', t('adNoAds'));
       return;
     }
 
-    await AdController.show();
+    console.log('🎬 Showing Adexium ad...');
 
+    // محاولة استخدام الطرق المتاحة من Adexium
+    if (typeof adexiumWidget.show === 'function') {
+      await adexiumWidget.show();
+    } else if (typeof adexiumWidget.showAd === 'function') {
+      await adexiumWidget.showAd();
+    } else if (typeof adexiumWidget.display === 'function') {
+      await adexiumWidget.display();
+    } else if (typeof adexiumWidget.autoMode === 'function') {
+      adexiumWidget.autoMode();
+    }
+
+    console.log('✅ Adexium ad shown');
+
+    // امنح المكافأة
     lastAdWatchTime = Date.now();
     localStorage.setItem('pwhy_last_ad', lastAdWatchTime.toString());
-    if (db) db.ref('boomboom_players/' + getUserId()).update({ lastAdWatchTime }).catch(() => {});
+    if (db) {
+      db.ref('boomboom_players/' + getUserId()).update({ lastAdWatchTime }).catch(() => {});
+    }
 
-    // مكافأة الطاقة
     energy += AD_REWARD_HEARTS;
-
-    // مكافأة النقاط بحسب المستوى
     const lvl = getLevel(score);
     const bonusCoins = Math.floor(500 * lvl.bonus);
     score += bonusCoins;
 
-    // مضاعف
     tempMultiplier = AD_BOOST_MULTIPLIER;
     tempBoostExpiry = Date.now() + AD_BOOST_DURATION_MS;
 
-    SM.gift();
     if (window.Telegram?.WebApp?.HapticFeedback) {
       window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
     }
@@ -454,8 +460,9 @@ async function watchAd() {
     showAlert('🎬', 'Success!', msg);
     updateUI();
     scheduleSave();
+
   } catch (e) {
-    console.warn('ad error:', e);
+    console.warn('Ad error:', e);
     showAlert('⚠️', 'Ad', t('adError'));
   } finally {
     if (btn) btn.disabled = false;
@@ -498,7 +505,6 @@ function showAlert(icon, title, message) {
 function closeAlert() {
   const modal = document.getElementById('alert-modal');
   if (modal) modal.classList.remove('active');
-  SM.click();
 }
 
 // --- Tutorial ---
@@ -514,19 +520,7 @@ function closeTutorial() {
   localStorage.setItem(tutorialKey, '1');
   const m = document.getElementById('tut-modal');
   if (m) m.classList.remove('active');
-  SM.click();
 }
-
-// --- Mute ---
-function toggleMute() {
-  const muted = SM.toggle();
-  const btn = document.getElementById('mute-btn');
-  if (btn) btn.textContent = muted ? '🔇' : '🔊';
-}
-(function initMute() {
-  const btn = document.getElementById('mute-btn');
-  if (btn && SM.isMuted && SM.isMuted()) btn.textContent = '🔇';
-})();
 
 // --- Star Shop ---
 function openStarShop() {
@@ -536,7 +530,6 @@ function openStarShop() {
 function closeStarShop() {
   const m = document.getElementById('star-shop-modal');
   if (m) m.classList.remove('active');
-  SM.click();
 }
 
 // --- Buy with Telegram Stars ---
@@ -571,7 +564,6 @@ async function buyWithStars(starsAmount, reward, title) {
     tg.openInvoice(data.invoiceLink, (status) => {
       console.log('Invoice status:', status);
       if (status === 'paid') {
-        SM.gift();
         score += reward;
         updateUI();
         scheduleSave();
