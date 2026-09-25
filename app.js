@@ -1,18 +1,16 @@
 /* ==========================================
-   PWhy BoomBoom - Game Logic (v4 - Sound Fix)
-   Firebase + Adsgram + Hearts
+   PWhy BoomBoom - Game Logic (v5 - Levels + Stars)
+   Firebase + Adsgram + Hearts + Levels + Telegram Stars
    ========================================== */
 
 // --- Safe SoundManager fallback ---
-// ✅ التعديل: نستخدم typeof بدل window.SoundManager
-// لأن const في النطاق العام لا تُضاف إلى window تلقائيًا
 const SM = (typeof SoundManager !== 'undefined') ? SoundManager : {
   tap: () => {}, click: () => {}, combo: () => {}, gift: () => {},
   levelUp: () => {}, powerup: () => {}, bigTap: () => {},
   isMuted: () => false, toggle: () => false
 };
 
-// --- Firebase Config (Project: pwhy-boomboom) ---
+// --- Firebase Config ---
 const firebaseConfig = {
   apiKey: "AIzaSyDsGk5Ufb-tVkxxfTcyqDKLiewik-DcH8o",
   authDomain: "pwhy-boomboom.firebaseapp.com",
@@ -23,7 +21,7 @@ const firebaseConfig = {
   appId: "1:107228338807:web:f01becdb45cac930fda532"
 };
 
-// --- Firebase Init (Protected) ---
+// --- Firebase Init ---
 let db = null;
 try {
   if (typeof firebase !== 'undefined' && firebase.initializeApp) {
@@ -35,6 +33,30 @@ try {
   }
 } catch (e) {
   console.error('❌ Firebase init error:', e);
+}
+
+// --- Levels System ---
+const LEVELS = [
+  { id: 'preliminary', ar: 'تمهيدي', en: 'Preliminary', min: 0,     color: '#f43f5e', glow: 'rgba(244,63,94,0.7)',  emoji: '💖', bonus: 1.0 },
+  { id: 'bronze',      ar: 'برونزي', en: 'Bronze',      min: 20000, color: '#cd7f32', glow: 'rgba(205,127,50,0.7)', emoji: '🧡', bonus: 1.25 },
+  { id: 'silver',      ar: 'فضي',    en: 'Silver',      min: 40000, color: '#e5e7eb', glow: 'rgba(229,231,235,0.7)', emoji: '🤍', bonus: 1.5 },
+  { id: 'gold',        ar: 'ذهبي',   en: 'Gold',        min: 60000, color: '#ffd700', glow: 'rgba(255,215,0,0.8)',  emoji: '💛', bonus: 2.0 },
+  { id: 'diamond',     ar: 'ماسي',   en: 'Diamond',     min: 80000, color: '#67e8f9', glow: 'rgba(103,232,249,0.85)', emoji: '💙', bonus: 3.0 }
+];
+
+function getLevel(pts) {
+  let lvl = LEVELS[0];
+  for (const l of LEVELS) if (pts >= l.min) lvl = l;
+  return lvl;
+}
+function getLevelIndex(pts) {
+  let idx = 0;
+  for (let i = 0; i < LEVELS.length; i++) if (pts >= LEVELS[i].min) idx = i;
+  return idx;
+}
+function getNextLevel(pts) {
+  const idx = getLevelIndex(pts);
+  return LEVELS[idx + 1] || null;
 }
 
 // --- Constants ---
@@ -61,24 +83,21 @@ let lastSaveTime = 0;
 let saveTimer = null;
 let isDataLoaded = false;
 let tutorialKey = 'pwhy_tutorial_done';
+let currentLevelId = null;
 
 // --- Telegram Init ---
 (function initTg() {
   const tg = window.Telegram?.WebApp;
   if (!tg) return;
-  try {
-    tg.ready();
-    tg.expand();
-  } catch (e) {}
+  try { tg.ready(); tg.expand(); } catch (e) {}
 })();
 
-// --- Adsgram (called from index.html after script loads) ---
+// --- Adsgram ---
 let AdController = null;
 let adsgramReady = false;
 window.initAdsgram = function() {
   if (typeof window.Adsgram === 'undefined') return false;
   try {
-    // ⚠️ ضع Block ID الخاص بـ Adsgram لمشروع PWhy
     AdController = window.Adsgram.init({ blockId: "49527" });
     adsgramReady = true;
     console.log('✅ Adsgram ready');
@@ -106,15 +125,12 @@ function getUserName() {
   return 'Player';
 }
 
-// --- Save (Throttled) ---
+// --- Save ---
 function scheduleSave() {
   if (saveTimer) return;
   const elapsed = Date.now() - lastSaveTime;
   const wait = Math.max(0, SAVE_THROTTLE_MS - elapsed);
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    saveToFirebase();
-  }, wait);
+  saveTimer = setTimeout(() => { saveTimer = null; saveToFirebase(); }, wait);
 }
 
 function saveToFirebase() {
@@ -133,27 +149,20 @@ function saveToFirebase() {
 async function loadUserData() {
   const userId = getUserId();
 
-  // Offline fallback if Firebase is not available
   if (!db) {
-    console.warn('⚠️ No Firebase — running in offline mode');
+    console.warn('⚠️ No Firebase — offline mode');
     const cached = parseInt(localStorage.getItem('pwhy_offline_score') || '0');
     if (cached > 0) score = cached;
     isDataLoaded = true;
-    hideSplash();
-    updateUI();
-    startEnergyRegen();
-    maybeShowTutorial();
+    hideSplash(); updateUI(); startEnergyRegen(); maybeShowTutorial();
     return;
   }
 
   try {
     const snap = await Promise.race([
       db.ref('boomboom_players/' + userId).once('value'),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Firebase timeout')), FIREBASE_TIMEOUT_MS)
-      )
+      new Promise((_, r) => setTimeout(() => r(new Error('timeout')), FIREBASE_TIMEOUT_MS))
     ]);
-
     const data = snap.val();
     if (data) {
       score = typeof data.score === 'number' ? data.score : 0;
@@ -170,22 +179,14 @@ async function loadUserData() {
       });
       console.log('✅ New user created');
     }
-
     isDataLoaded = true;
-    hideSplash();
-    updateUI();
-    startAdCooldownTicker();
-    startEnergyRegen();
-    maybeShowTutorial();
+    hideSplash(); updateUI(); startAdCooldownTicker(); startEnergyRegen(); maybeShowTutorial();
   } catch (e) {
     console.error('❌ loadUserData failed:', e);
     const cached = parseInt(localStorage.getItem('pwhy_offline_score') || '0');
     if (cached > 0) score = cached;
     isDataLoaded = true;
-    hideSplash();
-    updateUI();
-    startEnergyRegen();
-    maybeShowTutorial();
+    hideSplash(); updateUI(); startEnergyRegen(); maybeShowTutorial();
   }
 }
 
@@ -225,9 +226,79 @@ function updateUI() {
     if (avatar) avatar.textContent = (u.first_name?.[0] || '💖').toUpperCase();
     if (name) name.textContent = getUserName();
   }
+
+  updateLevelUI();
 }
 
-// --- Energy Regen ---
+// --- Level UI ---
+function updateLevelUI() {
+  const lvl = getLevel(score);
+  const idx = getLevelIndex(score);
+  const next = getNextLevel(score);
+
+  const root = document.documentElement;
+  root.style.setProperty('--heart-color', lvl.color);
+  root.style.setProperty('--heart-glow', lvl.glow);
+
+  // قلب رئيسي
+  const heartMain = document.getElementById('heart-main');
+  if (heartMain) heartMain.textContent = lvl.emoji;
+
+  // قلب في لوحة النقاط
+  const scoreHeart = document.getElementById('score-heart');
+  if (scoreHeart) scoreHeart.textContent = lvl.emoji;
+
+  // اسم المستوى
+  const levelNum = document.getElementById('user-level-num');
+  if (levelNum) {
+    levelNum.textContent = `${lvl.emoji} ${currentLang === 'ar' ? lvl.ar : lvl.en}`;
+    levelNum.style.color = lvl.color;
+  }
+
+  // شريط التقدم
+  const fill = document.getElementById('level-fill');
+  const label = document.getElementById('level-label');
+  if (fill && label) {
+    if (next) {
+      const range = next.min - lvl.min;
+      const done = score - lvl.min;
+      const pct = Math.min(100, (done / range) * 100);
+      fill.style.width = pct + '%';
+      fill.style.background = `linear-gradient(90deg, ${lvl.color}, ${next.color})`;
+      label.textContent = `${Math.floor(done).toLocaleString()} / ${range.toLocaleString()}`;
+    } else {
+      fill.style.width = '100%';
+      label.textContent = 'MAX 💎';
+    }
+  }
+
+  // ترقية؟
+  if (currentLevelId && currentLevelId !== lvl.id) {
+    onLevelUp(lvl);
+  }
+  currentLevelId = lvl.id;
+}
+
+function onLevelUp(lvl) {
+  console.log('🎉 Level Up:', lvl.id);
+  if (SM.levelUp) SM.levelUp();
+
+  document.body.style.transition = 'background 0.8s';
+  document.body.style.background = `radial-gradient(circle at center, ${lvl.glow} 0%, #0f172a 70%)`;
+  setTimeout(() => { document.body.style.background = '#0f172a'; }, 1200);
+
+  if (window.Telegram?.WebApp?.HapticFeedback) {
+    window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+  }
+
+  const title = currentLang === 'ar' ? `🎉 ترقية: ${lvl.ar}` : `🎉 Level Up: ${lvl.en}`;
+  const msg = currentLang === 'ar'
+    ? `مضاعف نقاطك الآن ×${lvl.bonus}`
+    : `Your score multiplier is now ×${lvl.bonus}`;
+  showAlert(lvl.emoji, title, msg);
+}
+
+// --- Energy ---
 function startEnergyRegen() {
   setInterval(() => {
     if (energy < maxEnergy) {
@@ -237,21 +308,13 @@ function startEnergyRegen() {
   }, 1000);
 }
 
-// --- Tap Handler ---
+// --- Tap ---
 function handleTap(x, y) {
-  console.log('👆 Tap at', x, y, 'energy=', energy);
-
-  if (energy < pointsPerTap) {
-    SM.click();
-    return;
-  }
+  if (energy < pointsPerTap) { SM.click(); return; }
 
   const now = Date.now();
-  if (now - lastTapTime < COMBO_WINDOW_MS) {
-    comboCount++;
-  } else {
-    comboCount = 1;
-  }
+  if (now - lastTapTime < COMBO_WINDOW_MS) comboCount++;
+  else comboCount = 1;
   lastTapTime = now;
 
   let comboMultiplier = 1;
@@ -267,7 +330,8 @@ function handleTap(x, y) {
   let eff = comboMultiplier;
   if (tempMultiplier > 1 && now < tempBoostExpiry) eff *= tempMultiplier;
 
-  const gain = Math.floor(pointsPerTap * eff);
+  const lvl = getLevel(score);
+  const gain = Math.floor(pointsPerTap * eff * lvl.bonus);
   score += gain;
   energy -= pointsPerTap;
 
@@ -279,7 +343,6 @@ function handleTap(x, y) {
   spawnFloatingHeart(x, y, '+' + gain);
   spawnBurstHearts(x, y);
   pulseHeart();
-
   updateUI();
   scheduleSave();
 }
@@ -302,7 +365,8 @@ function spawnFloatingHeart(x, y, text) {
 }
 
 function spawnBurstHearts(x, y) {
-  const hearts = ['💖', '💕', '❤️', '💗', '💓'];
+  const lvl = getLevel(score);
+  const hearts = [lvl.emoji, '💕', '❤️', '💗', '💓'];
   for (let i = 0; i < 6; i++) {
     const el = document.createElement('div');
     el.className = 'burst-heart';
@@ -326,23 +390,17 @@ function showCombo(n, m) {
   setTimeout(() => el.remove(), 600);
 }
 
-// --- Heart stage events (pointerdown only) ---
+// --- Heart stage ---
 (function initHeartStage() {
   const heartStage = document.getElementById('heart-stage');
-  if (!heartStage) {
-    console.error('❌ #heart-stage not found');
-    return;
-  }
+  if (!heartStage) { console.error('❌ #heart-stage not found'); return; }
   let lastTouchTime = 0;
   heartStage.addEventListener('pointerdown', (e) => {
     if (e.pointerType === 'touch') {
       lastTouchTime = Date.now();
       handleTap(e.clientX, e.clientY);
     } else if (e.pointerType === 'mouse') {
-      // تجاهل نقر الماوس المزدوج بعد لمسة على الأجهزة الهجينة
-      if (Date.now() - lastTouchTime > 500) {
-        handleTap(e.clientX, e.clientY);
-      }
+      if (Date.now() - lastTouchTime > 500) handleTap(e.clientX, e.clientY);
     }
   });
   console.log('✅ Heart stage ready');
@@ -350,8 +408,6 @@ function showCombo(n, m) {
 
 // --- Adsgram Ad ---
 async function watchAd() {
-  console.log('🎬 watchAd called', { adsgramReady, AdController: !!AdController });
-
   const now = Date.now();
   if (now - lastAdWatchTime < AD_COOLDOWN_MS) {
     const r = AD_COOLDOWN_MS - (now - lastAdWatchTime);
@@ -373,11 +429,17 @@ async function watchAd() {
 
     lastAdWatchTime = Date.now();
     localStorage.setItem('pwhy_last_ad', lastAdWatchTime.toString());
-    if (db) {
-      db.ref('boomboom_players/' + getUserId()).update({ lastAdWatchTime }).catch(() => {});
-    }
+    if (db) db.ref('boomboom_players/' + getUserId()).update({ lastAdWatchTime }).catch(() => {});
 
+    // مكافأة الطاقة
     energy += AD_REWARD_HEARTS;
+
+    // مكافأة النقاط بحسب المستوى
+    const lvl = getLevel(score);
+    const bonusCoins = Math.floor(500 * lvl.bonus);
+    score += bonusCoins;
+
+    // مضاعف
     tempMultiplier = AD_BOOST_MULTIPLIER;
     tempBoostExpiry = Date.now() + AD_BOOST_DURATION_MS;
 
@@ -386,7 +448,10 @@ async function watchAd() {
       window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
     }
 
-    showAlert('💖', 'Success!', t('adBoost'));
+    const msg = currentLang === 'ar'
+      ? `+${AD_REWARD_HEARTS} طاقة، +${bonusCoins} PWhy، مضاعف ×2`
+      : `+${AD_REWARD_HEARTS} energy, +${bonusCoins} PWhy, ×2 boost`;
+    showAlert('🎬', 'Success!', msg);
     updateUI();
     scheduleSave();
   } catch (e) {
@@ -458,12 +523,73 @@ function toggleMute() {
   const btn = document.getElementById('mute-btn');
   if (btn) btn.textContent = muted ? '🔇' : '🔊';
 }
-
-// --- Init mute state ---
 (function initMute() {
   const btn = document.getElementById('mute-btn');
   if (btn && SM.isMuted && SM.isMuted()) btn.textContent = '🔇';
 })();
+
+// --- Star Shop ---
+function openStarShop() {
+  const m = document.getElementById('star-shop-modal');
+  if (m) m.classList.add('active');
+}
+function closeStarShop() {
+  const m = document.getElementById('star-shop-modal');
+  if (m) m.classList.remove('active');
+  SM.click();
+}
+
+// --- Buy with Telegram Stars ---
+async function buyWithStars(starsAmount, reward, title) {
+  const tg = window.Telegram?.WebApp;
+
+  if (!tg || !tg.openInvoice) {
+    showAlert('⚠️', 'Stars', currentLang === 'ar'
+      ? 'الدفع بالنجوم غير متاح هنا'
+      : 'Telegram Stars not available here');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/create-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: getUserId(),
+        stars: starsAmount,
+        reward: reward,
+        title: title
+      })
+    });
+    const data = await res.json();
+
+    if (!data.ok || !data.invoiceLink) {
+      showAlert('⚠️', 'Stars', data.error || 'Failed to create invoice');
+      return;
+    }
+
+    tg.openInvoice(data.invoiceLink, (status) => {
+      console.log('Invoice status:', status);
+      if (status === 'paid') {
+        SM.gift();
+        score += reward;
+        updateUI();
+        scheduleSave();
+        showAlert('⭐', 'Success!', currentLang === 'ar'
+          ? `+${reward.toLocaleString()} PWhy`
+          : `+${reward.toLocaleString()} PWhy`);
+        closeStarShop();
+      } else if (status === 'cancelled') {
+        console.log('Payment cancelled');
+      } else {
+        showAlert('⚠️', 'Stars', 'Payment: ' + status);
+      }
+    });
+  } catch (e) {
+    console.error('buyWithStars error:', e);
+    showAlert('⚠️', 'Stars', 'Network error');
+  }
+}
 
 // --- Save on unload ---
 window.addEventListener('beforeunload', saveToFirebase);
@@ -472,5 +598,5 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) saveToFirebase();
 });
 
-// --- Load (single call) ---
+// --- Load ---
 loadUserData();
