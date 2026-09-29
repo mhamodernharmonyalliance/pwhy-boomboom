@@ -87,15 +87,6 @@
     .tut-step .emoji { font-size: 26px; }
     .tut-step .txt { color: #cbd5e1; font-size: 13px; }
 
-    .star-pkg { display: flex; align-items: center; gap: 12px; padding: 12px; margin-bottom: 10px; background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.3); border-radius: 12px; cursor: pointer; text-align: start; transition: transform 0.1s, border-color 0.2s; }
-    .star-pkg:active { transform: scale(0.98); }
-    .star-pkg:hover { border-color: #f43f5e; }
-    .star-pkg .pkg-icon { font-size: 30px; flex-shrink: 0; }
-    .star-pkg .pkg-body { flex: 1; min-width: 0; }
-    .star-pkg .pkg-title { font-size: 13px; font-weight: 700; color: #fff; }
-    .star-pkg .pkg-reward { font-size: 11px; color: #94a3b8; }
-    .star-pkg .pkg-price { font-size: 13px; font-weight: 700; color: #f59e0b; padding: 6px 10px; background: rgba(245,158,11,0.15); border-radius: 8px; flex-shrink: 0; }
-
     html[dir="rtl"] .tut-step { text-align: right; }
     html[dir="ltr"] .tut-step { text-align: left; }
   </style>
@@ -130,7 +121,6 @@
     <div class="header-actions">
       <button class="icon-btn" onclick="inviteFriend()" title="Invite">🤝</button>
       <button class="icon-btn" id="lang-btn" onclick="toggleLanguage()" title="Language">🌐</button>
-      <button class="icon-btn" onclick="openStarShop()" title="Shop">⭐</button>
     </div>
   </header>
 
@@ -189,43 +179,6 @@
       <h2 id="alert-title">Done</h2>
       <p id="alert-message"></p>
       <button class="modal-btn" onclick="closeAlert()" data-i18n="ok">OK</button>
-    </div>
-  </div>
-
-  <div id="star-shop-modal" class="modal-overlay">
-    <div class="modal-card">
-      <span class="modal-icon">⭐</span>
-      <h2 data-i18n="starShopTitle">PWhy Shop</h2>
-      <p data-i18n="starShopSub">Buy PWhy coins with Telegram Stars</p>
-
-      <div class="star-pkg" onclick="buyWithStars(25, 12500, 'Starter Pack')">
-        <span class="pkg-icon">💖</span>
-        <div class="pkg-body">
-          <div class="pkg-title">Starter Pack</div>
-          <div class="pkg-reward">+12,500 PWhy</div>
-        </div>
-        <span class="pkg-price">⭐ 25</span>
-      </div>
-
-      <div class="star-pkg" onclick="buyWithStars(50, 30000, 'Medium Pack')">
-        <span class="pkg-icon">💎</span>
-        <div class="pkg-body">
-          <div class="pkg-title">Medium Pack</div>
-          <div class="pkg-reward">+30,000 PWhy</div>
-        </div>
-        <span class="pkg-price">⭐ 50</span>
-      </div>
-
-      <div class="star-pkg" onclick="buyWithStars(75, 50000, 'Large Pack')">
-        <span class="pkg-icon">👑</span>
-        <div class="pkg-body">
-          <div class="pkg-title">Large Pack</div>
-          <div class="pkg-reward">+50,000 PWhy</div>
-        </div>
-        <span class="pkg-price">⭐ 75</span>
-      </div>
-
-      <button class="modal-btn" style="margin-top:12px;" onclick="closeStarShop()" data-i18n="ok">OK</button>
     </div>
   </div>
 
