@@ -25,9 +25,7 @@ const I18N = {
     ok: "OK",
     boost: "BOOST ×2",
     x2Boost: "🔥 x2 Boost",
-    offlineScoreKept: "Offline mode",
-    starShopTitle: "PWhy Shop",
-    starShopSub: "Buy PWhy coins with Telegram Stars"
+    offlineScoreKept: "Offline mode"
   },
   ar: {
     splashTitle: "جاري تحميل PWhy BoomBoom... 💖",
@@ -51,9 +49,7 @@ const I18N = {
     ok: "حسناً",
     boost: "تعزيز ×2",
     x2Boost: "🔥 مضاعف ×2",
-    offlineScoreKept: "وضع غير متصل",
-    starShopTitle: "متجر PWhy",
-    starShopSub: "اشترِ عملات PWhy بنجوم تليجرام"
+    offlineScoreKept: "وضع غير متصل"
   }
 };
 
