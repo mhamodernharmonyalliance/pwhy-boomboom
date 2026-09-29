@@ -1,6 +1,6 @@
 /* ==========================================
-   PWhy BoomBoom - Game Logic (v8 - Final)
-   Firebase + Adexium + Hearts + Levels + Stars + Referrals
+   PWhy BoomBoom - Game Logic (v9 - No Stars)
+   Firebase + Adexium + Hearts + Levels + Referrals
    ========================================== */
 
 // --- Firebase Config ---
@@ -478,7 +478,7 @@ function showCombo(n, m) {
   console.log('✅ Heart stage ready');
 })();
 
-// --- Ad (Adexium — Strict Mode) ---
+// --- Ad (Adexium) ---
 async function watchAd() {
   const now = Date.now();
   if (now - lastAdWatchTime < AD_COOLDOWN_MS) {
@@ -598,67 +598,6 @@ function closeTutorial() {
   localStorage.setItem(tutorialKey, '1');
   const m = document.getElementById('tut-modal');
   if (m) m.classList.remove('active');
-}
-
-// --- Star Shop ---
-function openStarShop() {
-  const m = document.getElementById('star-shop-modal');
-  if (m) m.classList.add('active');
-}
-function closeStarShop() {
-  const m = document.getElementById('star-shop-modal');
-  if (m) m.classList.remove('active');
-}
-
-// --- Buy with Telegram Stars ---
-async function buyWithStars(starsAmount, reward, title) {
-  const tg = window.Telegram?.WebApp;
-
-  if (!tg || !tg.openInvoice) {
-    showAlert('⚠️', 'Stars', currentLang === 'ar'
-      ? 'الدفع بالنجوم غير متاح هنا'
-      : 'Telegram Stars not available here');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/create-invoice', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: getUserId(),
-        stars: starsAmount,
-        reward: reward,
-        title: title
-      })
-    });
-    const data = await res.json();
-
-    if (!data.ok || !data.invoiceLink) {
-      showAlert('⚠️', 'Stars', data.error || 'Failed to create invoice');
-      return;
-    }
-
-    tg.openInvoice(data.invoiceLink, (status) => {
-      console.log('Invoice status:', status);
-      if (status === 'paid') {
-        score += reward;
-        updateUI();
-        scheduleSave();
-        showAlert('⭐', 'Success!', currentLang === 'ar'
-          ? `+${reward.toLocaleString()} PWhy`
-          : `+${reward.toLocaleString()} PWhy`);
-        closeStarShop();
-      } else if (status === 'cancelled') {
-        console.log('Payment cancelled');
-      } else {
-        showAlert('⚠️', 'Stars', 'Payment: ' + status);
-      }
-    });
-  } catch (e) {
-    console.error('buyWithStars error:', e);
-    showAlert('⚠️', 'Stars', 'Network error');
-  }
 }
 
 // --- Save on unload ---
