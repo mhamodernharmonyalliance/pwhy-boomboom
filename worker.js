@@ -1,9 +1,10 @@
 /* ==========================================
    PWhy BoomBoom Worker - Cloudflare Backend
-   Adsgram Reward + Telegram Stars Invoice
+   Firebase + Telegram Stars + Referrals
    ========================================== */
 
 const FIREBASE = 'https://pwhy-boomboom-default-rtdb.europe-west1.firebasedatabase.app';
+const REFERRAL_REWARD = 150;
 
 export default {
   async fetch(request, env) {
@@ -14,17 +15,14 @@ export default {
     }
 
     // --- Routes ---
-    if (url.pathname === '/reward' && request.method === 'GET') {
-      return handleReward(request, env);
-    }
     if (url.pathname === '/api/health') {
       return jsonResponse({ ok: true, hasToken: !!env.BOT_TOKEN });
     }
-    if (url.pathname === '/api/products') {
-      return jsonResponse({ ok: true, products: [] });
-    }
     if (url.pathname === '/api/create-invoice' && request.method === 'POST') {
       return handleCreateInvoice(request, env);
+    }
+    if (url.pathname === '/api/referral' && request.method === 'POST') {
+      return handleReferral(request);
     }
 
     // Static assets
@@ -48,39 +46,6 @@ function jsonResponse(data, status = 200) {
   });
 }
 
-// --- Adsgram Reward ---
-async function handleReward(request, env) {
-  try {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
-    if (!userId) return new Response('Missing userId', { status: 400 });
-
-    const timestamp = Date.now();
-    console.log(`💖 Ad reward: ${userId}`);
-
-    await fetch(`${FIREBASE}/boomboom_ad_rewards.json`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, at: timestamp, source: 'adsgram' })
-    });
-
-    const counterRef = `${FIREBASE}/boomboom_players/${userId}/adCount.json`;
-    const snap = await fetch(counterRef).then(r => r.json()).catch(() => 0);
-    const currentCount = typeof snap === 'number' ? snap : 0;
-
-    await fetch(`${FIREBASE}/boomboom_players/${userId}.json`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adCount: currentCount + 1, lastAdAt: timestamp })
-    });
-
-    return new Response('OK', { status: 200, headers: { 'Content-Type': 'text/plain' } });
-  } catch (e) {
-    console.error('reward error:', e);
-    return new Response('OK', { status: 200 });
-  }
-}
-
 // --- Telegram Stars Invoice ---
 async function handleCreateInvoice(request, env) {
   try {
@@ -94,7 +59,6 @@ async function handleCreateInvoice(request, env) {
       return jsonResponse({ ok: false, error: 'BOT_TOKEN not set' }, 500);
     }
 
-    // payload يحتوي على userId والمكافأة (حتى 128 حرف)
     const payload = JSON.stringify({
       u: userId.slice(0, 40),
       r: reward,
@@ -124,7 +88,6 @@ async function handleCreateInvoice(request, env) {
       return jsonResponse({ ok: false, error: tgJson.description || 'Telegram error' }, 500);
     }
 
-    // حفظ الفاتورة في Firebase للتحقق لاحقًا
     const invoiceId = 'inv_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
     await fetch(`${FIREBASE}/stars_invoices/${invoiceId}.json`, {
       method: 'PUT',
@@ -137,15 +100,60 @@ async function handleCreateInvoice(request, env) {
       })
     }).catch(e => console.warn('firebase save failed:', e));
 
-    console.log(`⭐ Invoice created for ${userId}: ${stars} stars -> ${reward} PWhy`);
+    console.log(`⭐ Invoice created: ${userId} → ${stars} stars → ${reward} PWhy`);
 
-    return jsonResponse({
-      ok: true,
-      invoiceLink: tgJson.result,
-      invoiceId: invoiceId
-    });
+    return jsonResponse({ ok: true, invoiceLink: tgJson.result, invoiceId: invoiceId });
   } catch (e) {
     console.error('handleCreateInvoice error:', e);
+    return jsonResponse({ ok: false, error: e.message }, 500);
+  }
+}
+
+// --- Referral ---
+async function handleReferral(request) {
+  try {
+    const { referrerId, referredId } = await request.json();
+
+    if (!referrerId || !referredId || referrerId === referredId) {
+      console.warn('⚠️ Invalid referral:', { referrerId, referredId });
+      return jsonResponse({ ok: false, error: 'invalid' }, 400);
+    }
+
+    // هل هذا المستخدم محال سابقًا؟
+    const existing = await fetch(`${FIREBASE}/boomboom_referrals/${referredId}.json`)
+      .then(r => r.json()).catch(() => null);
+    if (existing) {
+      console.log('ℹ️ Already referred:', referredId);
+      return jsonResponse({ ok: false, error: 'already' }, 409);
+    }
+
+    // اقرأ بيانات المُحيل
+    const refSnap = await fetch(`${FIREBASE}/boomboom_players/${referrerId}.json`)
+      .then(r => r.json()).catch(() => null);
+    if (!refSnap) {
+      console.warn('⚠️ Referrer not found:', referrerId);
+      return jsonResponse({ ok: false, error: 'no-referrer' }, 404);
+    }
+
+    // سجّل الإحالة
+    await fetch(`${FIREBASE}/boomboom_referrals/${referredId}.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ referrerId, at: Date.now() })
+    });
+
+    // امنح المُحيل +150
+    const newScore = (refSnap.score || 0) + REFERRAL_REWARD;
+    await fetch(`${FIREBASE}/boomboom_players/${referrerId}/score.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newScore)
+    });
+
+    console.log(`🤝 Referral: ${referredId} → ${referrerId} (+${REFERRAL_REWARD})`);
+    return jsonResponse({ ok: true, rewarded: REFERRAL_REWARD });
+  } catch (e) {
+    console.error('❌ Referral error:', e);
     return jsonResponse({ ok: false, error: e.message }, 500);
   }
 }
