@@ -1,6 +1,6 @@
 /* ==========================================
-   PWhy BoomBoom - Game Logic (v6 - Adexium + No Sound)
-   Firebase + Adexium + Hearts + Levels + Telegram Stars
+   PWhy BoomBoom - Game Logic (v8 - Final)
+   Firebase + Adexium + Hearts + Levels + Stars + Referrals
    ========================================== */
 
 // --- Firebase Config ---
@@ -28,6 +28,19 @@ try {
   console.error('❌ Firebase init error:', e);
 }
 
+// --- Constants ---
+const BOT_USERNAME = 'pwhy_boomboom_bot';
+const MAX_ENERGY = 500;
+const ENERGY_REGEN_PER_SEC = 3;
+const AD_COOLDOWN_MS = 3 * 60 * 1000;
+const AD_REWARD_HEARTS = 500;
+const AD_REWARD_PWHY_BASE = 250;
+const AD_BOOST_DURATION_MS = 60 * 1000;
+const AD_BOOST_MULTIPLIER = 2;
+const COMBO_WINDOW_MS = 1500;
+const SAVE_THROTTLE_MS = 5000;
+const FIREBASE_TIMEOUT_MS = 6000;
+
 // --- Levels System ---
 const LEVELS = [
   { id: 'preliminary', ar: 'تمهيدي', en: 'Preliminary', min: 0,       color: '#f43f5e', glow: 'rgba(244,63,94,0.7)',     emoji: '💖', bonus: 1.0 },
@@ -52,20 +65,10 @@ function getNextLevel(pts) {
   return LEVELS[idx + 1] || null;
 }
 
-// --- Constants ---
-const ENERGY_REGEN_PER_SEC = 3;
-const AD_COOLDOWN_MS = 3 * 60 * 1000;
-const AD_REWARD_HEARTS = 1000;
-const AD_BOOST_DURATION_MS = 60 * 1000;
-const AD_BOOST_MULTIPLIER = 2;
-const COMBO_WINDOW_MS = 1500;
-const SAVE_THROTTLE_MS = 5000;
-const FIREBASE_TIMEOUT_MS = 6000;
-
 // --- State ---
 let score = 0;
-let energy = 1000;
-let maxEnergy = 1000;
+let energy = MAX_ENERGY;
+let maxEnergy = MAX_ENERGY;
 let pointsPerTap = 1;
 let comboCount = 0;
 let lastTapTime = 0;
@@ -107,7 +110,6 @@ window.initAdexium = function() {
   }
 };
 
-// حاول تهيئة Adexium بعد تحميل SDK
 document.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => { window.initAdexium(); }, 1500);
 });
@@ -149,6 +151,67 @@ function saveToFirebase() {
   }).catch(e => console.warn('save failed:', e));
 }
 
+// --- Referral ---
+async function registerReferral() {
+  const tg = window.Telegram?.WebApp;
+  const startParam = tg?.initDataUnsafe?.start_param;
+  if (!startParam || !startParam.startsWith('ref_')) return;
+
+  const processedKey = 'pwhy_ref_done';
+  if (localStorage.getItem(processedKey) === startParam) {
+    console.log('ℹ️ Referral already processed');
+    return;
+  }
+
+  const referrerId = 'pwhy_' + startParam.slice(4);
+  const referredId = getUserId();
+  if (referrerId === referredId) {
+    console.log('ℹ️ Self-referral — ignored');
+    return;
+  }
+
+  try {
+    console.log('🤝 Referral attempt:', referrerId, '←', referredId);
+    const res = await fetch('/api/referral', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ referrerId, referredId })
+    });
+    const data = await res.json();
+    console.log('📥 Referral result:', data);
+    if (data.ok) {
+      localStorage.setItem(processedKey, startParam);
+      console.log('✅ Referral registered');
+    } else {
+      console.warn('⚠️ Referral rejected:', data.error);
+    }
+  } catch (e) {
+    console.warn('❌ Referral error:', e);
+  }
+}
+
+function inviteFriend() {
+  const tg = window.Telegram?.WebApp;
+  const id = tg?.initDataUnsafe?.user?.id;
+  if (!id) {
+    console.warn('⚠️ No Telegram ID — invite unavailable');
+    return;
+  }
+
+  const link = `https://t.me/${BOT_USERNAME}?start=ref_${id}`;
+  const text = currentLang === 'ar'
+    ? `💖 جرّب PWhy BoomBoom! نتيجتي ${score.toLocaleString()} — هل تستطيع كسرها؟`
+    : `💖 Try PWhy BoomBoom! My score is ${score.toLocaleString()} — can you beat it?`;
+  const share = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`;
+
+  console.log('📤 Sharing:', share);
+  try {
+    tg.openTelegramLink ? tg.openTelegramLink(share) : window.open(share, '_blank');
+  } catch (e) {
+    console.warn('❌ Share error:', e);
+  }
+}
+
 // --- Load ---
 async function loadUserData() {
   const userId = getUserId();
@@ -170,16 +233,18 @@ async function loadUserData() {
     const data = snap.val();
     if (data) {
       score = typeof data.score === 'number' ? data.score : 0;
-      energy = typeof data.energy === 'number' ? data.energy : 1000;
-      maxEnergy = typeof data.maxEnergy === 'number' ? data.maxEnergy : 1000;
+      maxEnergy = MAX_ENERGY;
+      energy = typeof data.energy === 'number'
+        ? Math.min(data.energy, MAX_ENERGY)
+        : MAX_ENERGY;
       pointsPerTap = typeof data.pointsPerTap === 'number' ? data.pointsPerTap : 1;
       lastAdWatchTime = data.lastAdWatchTime || 0;
       console.log('✅ User data loaded:', data);
     } else {
       await db.ref('boomboom_players/' + userId).set({
-        score: 0, energy: 1000, maxEnergy: 1000, pointsPerTap: 1,
+        score: 0, energy: MAX_ENERGY, maxEnergy: MAX_ENERGY, pointsPerTap: 1,
         name: getUserName(), joinedAt: Date.now(), lastActive: Date.now(),
-        adCount: 0, heartsPopped: 0
+        adCount: 0, heartsPopped: 0, referralCount: 0, referralEarned: 0
       });
       console.log('✅ New user created');
     }
@@ -279,7 +344,6 @@ function updateLevelUI() {
 
 function onLevelUp(lvl) {
   console.log('🎉 Level Up:', lvl.id);
-
   document.body.style.transition = 'background 0.8s';
   document.body.style.background = `radial-gradient(circle at center, ${lvl.glow} 0%, #0f172a 70%)`;
   setTimeout(() => { document.body.style.background = '#0f172a'; }, 1200);
@@ -295,15 +359,28 @@ function onLevelUp(lvl) {
   showAlert(lvl.emoji, title, msg);
 }
 
-// --- Energy ---
+// --- Energy Regen ---
+let regenInterval = null;
+
 function startEnergyRegen() {
-  setInterval(() => {
+  if (regenInterval) return;
+
+  regenInterval = setInterval(() => {
+    if (document.hidden) return;
     if (energy < maxEnergy) {
       energy = Math.min(maxEnergy, energy + ENERGY_REGEN_PER_SEC);
       updateUI();
     }
   }, 1000);
 }
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    console.log('⏸️ Energy regen paused (page hidden)');
+  } else {
+    console.log('▶️ Energy regen resumed (page visible)');
+  }
+});
 
 // --- Tap ---
 function handleTap(x, y) {
@@ -401,7 +478,7 @@ function showCombo(n, m) {
   console.log('✅ Heart stage ready');
 })();
 
-// --- Ad (Adexium) ---
+// --- Ad (Adexium — Strict Mode) ---
 async function watchAd() {
   const now = Date.now();
   if (now - lastAdWatchTime < AD_COOLDOWN_MS) {
@@ -422,7 +499,6 @@ async function watchAd() {
 
     console.log('🎬 Showing Adexium ad...');
 
-    // محاولة استخدام الطرق المتاحة من Adexium
     if (typeof adexiumWidget.show === 'function') {
       await adexiumWidget.show();
     } else if (typeof adexiumWidget.showAd === 'function') {
@@ -431,20 +507,22 @@ async function watchAd() {
       await adexiumWidget.display();
     } else if (typeof adexiumWidget.autoMode === 'function') {
       adexiumWidget.autoMode();
+    } else {
+      showAlert('⚠️', 'Ad', t('adNoAds'));
+      return;
     }
 
     console.log('✅ Adexium ad shown');
 
-    // امنح المكافأة
     lastAdWatchTime = Date.now();
     localStorage.setItem('pwhy_last_ad', lastAdWatchTime.toString());
     if (db) {
       db.ref('boomboom_players/' + getUserId()).update({ lastAdWatchTime }).catch(() => {});
     }
 
-    energy += AD_REWARD_HEARTS;
+    energy = Math.min(maxEnergy, energy + AD_REWARD_HEARTS);
     const lvl = getLevel(score);
-    const bonusCoins = Math.floor(500 * lvl.bonus);
+    const bonusCoins = Math.floor(AD_REWARD_PWHY_BASE * lvl.bonus);
     score += bonusCoins;
 
     tempMultiplier = AD_BOOST_MULTIPLIER;
@@ -462,8 +540,8 @@ async function watchAd() {
     scheduleSave();
 
   } catch (e) {
-    console.warn('Ad error:', e);
-    showAlert('⚠️', 'Ad', t('adError'));
+    console.warn('⚠️ Ad failed:', e);
+    showAlert('⚠️', 'Ad', t('adNoAds'));
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -590,5 +668,8 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) saveToFirebase();
 });
 
-// --- Load ---
-loadUserData();
+// --- Init sequence ---
+(async function init() {
+  await registerReferral();
+  await loadUserData();
+})();
