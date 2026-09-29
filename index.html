@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PWhy BoomBoom 💖</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="/pwhy-icon.png">
+  <link rel="apple-touch-icon" href="/pwhy-icon.png">
   <meta name="theme-color" content="#0f172a">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; }
@@ -126,6 +128,7 @@
       </div>
     </div>
     <div class="header-actions">
+      <button class="icon-btn" onclick="inviteFriend()" title="Invite">🤝</button>
       <button class="icon-btn" id="lang-btn" onclick="toggleLanguage()" title="Language">🌐</button>
       <button class="icon-btn" onclick="openStarShop()" title="Shop">⭐</button>
     </div>
@@ -155,14 +158,14 @@
   <div class="bottom-panel">
     <div class="energy-header">
       <span class="label">⚡ <span data-i18n="energy">Energy</span></span>
-      <span class="value"><span id="energy">1000</span> / <span id="max-energy">1000</span></span>
+      <span class="value"><span id="energy">500</span> / <span id="max-energy">500</span></span>
     </div>
     <div class="energy-bar">
       <div class="energy-fill" id="energy-fill" style="width:100%"></div>
     </div>
     <button class="ad-btn" id="ad-btn" onclick="watchAd()">
       <span class="icon">📺</span>
-      <span id="ad-btn-text" data-i18n="watchAd">Watch Ad → +1000 Hearts</span>
+      <span id="ad-btn-text" data-i18n="watchAd">Watch Ad → +500 Hearts</span>
       <span class="ad-cooldown" id="ad-cooldown" style="display:none;">0:00</span>
     </button>
   </div>
@@ -195,48 +198,42 @@
       <h2 data-i18n="starShopTitle">PWhy Shop</h2>
       <p data-i18n="starShopSub">Buy PWhy coins with Telegram Stars</p>
 
-      <div class="star-pkg" onclick="buyWithStars(50, 25000, 'Starter Pack')">
+      <div class="star-pkg" onclick="buyWithStars(25, 12500, 'Starter Pack')">
         <span class="pkg-icon">💖</span>
         <div class="pkg-body">
           <div class="pkg-title">Starter Pack</div>
-          <div class="pkg-reward">+25,000 PWhy</div>
+          <div class="pkg-reward">+12,500 PWhy</div>
+        </div>
+        <span class="pkg-price">⭐ 25</span>
+      </div>
+
+      <div class="star-pkg" onclick="buyWithStars(50, 30000, 'Medium Pack')">
+        <span class="pkg-icon">💎</span>
+        <div class="pkg-body">
+          <div class="pkg-title">Medium Pack</div>
+          <div class="pkg-reward">+30,000 PWhy</div>
         </div>
         <span class="pkg-price">⭐ 50</span>
       </div>
 
-      <div class="star-pkg" onclick="buyWithStars(100, 60000, 'Medium Pack')">
-        <span class="pkg-icon">💎</span>
-        <div class="pkg-body">
-          <div class="pkg-title">Medium Pack</div>
-          <div class="pkg-reward">+60,000 PWhy</div>
-        </div>
-        <span class="pkg-price">⭐ 100</span>
-      </div>
-
-      <div class="star-pkg" onclick="buyWithStars(150, 100000, 'Large Pack')">
+      <div class="star-pkg" onclick="buyWithStars(75, 50000, 'Large Pack')">
         <span class="pkg-icon">👑</span>
         <div class="pkg-body">
           <div class="pkg-title">Large Pack</div>
-          <div class="pkg-reward">+100,000 PWhy</div>
+          <div class="pkg-reward">+50,000 PWhy</div>
         </div>
-        <span class="pkg-price">⭐ 150</span>
+        <span class="pkg-price">⭐ 75</span>
       </div>
 
       <button class="modal-btn" style="margin-top:12px;" onclick="closeStarShop()" data-i18n="ok">OK</button>
     </div>
   </div>
 
-  <!-- Telegram SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <!-- Firebase compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-  <!-- Adexium SDK -->
   <script src="https://cdn.tgads.space/assets/js/adexium-widget.min.js"></script>
 
-  <!-- Local scripts -->
   <script src="i18n.js"></script>
   <script src="app.js"></script>
 
